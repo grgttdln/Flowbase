@@ -1,2 +1,9 @@
-// Canvas package — components and hooks will be added in Phase 2
-export const CANVAS_PACKAGE = '@flowbase/canvas';
+// Components
+export { default as FlowbaseCanvas } from './components/FlowbaseCanvas';
+
+// Store
+export { useCanvasStore } from './store/useCanvasStore';
+export type { CanvasState } from './store/useCanvasStore';
+
+// Tools
+export { useToolHandlers } from './tools/useToolHandlers';
