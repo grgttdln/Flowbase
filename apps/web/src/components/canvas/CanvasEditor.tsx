@@ -1,23 +1,37 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { FlowbaseCanvas, useCanvasStore } from '@flowbase/canvas';
 import type { ToolType } from '@flowbase/shared';
-
-const TOOLS: { key: ToolType; label: string; shortcut: string }[] = [
-  { key: 'select', label: 'Select', shortcut: 'V' },
-  { key: 'rectangle', label: 'Rectangle', shortcut: 'R' },
-  { key: 'ellipse', label: 'Ellipse', shortcut: 'O' },
-  { key: 'diamond', label: 'Diamond', shortcut: 'D' },
-  { key: 'line', label: 'Line', shortcut: 'L' },
-  { key: 'arrow', label: 'Arrow', shortcut: 'A' },
-  { key: 'freehand', label: 'Draw', shortcut: 'P' },
-  { key: 'text', label: 'Text', shortcut: 'T' },
-];
+import ToolPicker from '../toolbar/ToolPicker';
+import LogoPill from '../toolbar/LogoPill';
+import ActionGroup from '../toolbar/ActionGroup';
+import ZoomControls from '../toolbar/ZoomControls';
+import SaveIndicator from '../toolbar/SaveIndicator';
+import ContextMenu, { type ContextMenuAction } from './ContextMenu';
 
 const CanvasEditor = () => {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const { activeTool, setTool, viewport, zoomTo, elements, selectedIds } = useCanvasStore();
+  const {
+    activeTool,
+    setTool,
+    viewport,
+    zoomTo,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    copy,
+    paste,
+    deleteElements,
+    selectedIds,
+    group,
+    ungroup,
+    bringForward,
+    sendBackward,
+  } = useCanvasStore();
+
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; elementId?: string } | null>(null);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -30,79 +44,120 @@ const CanvasEditor = () => {
 
   // Tool shortcuts
   useEffect(() => {
+    const SHORTCUTS: Record<string, ToolType> = {
+      v: 'select',
+      r: 'rectangle',
+      o: 'ellipse',
+      d: 'diamond',
+      l: 'line',
+      a: 'arrow',
+      p: 'freehand',
+      t: 'text',
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      const tool = TOOLS.find((t) => t.shortcut.toLowerCase() === e.key.toLowerCase());
-      if (tool) {
-        setTool(tool.key);
-      }
+      const tool = SHORTCUTS[e.key.toLowerCase()];
+      if (tool) setTool(tool);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setTool]);
 
-  const zoomPercent = Math.round(viewport.zoom * 100);
+  const handleContextMenu = useCallback((e: { x: number; y: number; elementId?: string }) => {
+    setContextMenu(e);
+  }, []);
+
+  const handleContextMenuAction = useCallback((action: ContextMenuAction) => {
+    switch (action) {
+      case 'copy':
+        copy();
+        break;
+      case 'paste':
+        paste();
+        break;
+      case 'delete':
+        deleteElements(Array.from(selectedIds));
+        break;
+      case 'group':
+        group();
+        break;
+      case 'ungroup':
+        ungroup();
+        break;
+      case 'bringForward':
+        bringForward();
+        break;
+      case 'sendBackward':
+        sendBackward();
+        break;
+      case 'explain':
+      case 'suggest':
+      case 'summarize':
+        // AI actions — will be wired in Phase 6
+        break;
+    }
+  }, [copy, paste, deleteElements, selectedIds, group, ungroup, bringForward, sendBackward]);
 
   if (dimensions.width === 0) return null;
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-white">
       {/* Canvas */}
-      <FlowbaseCanvas width={dimensions.width} height={dimensions.height} />
+      <FlowbaseCanvas
+        width={dimensions.width}
+        height={dimensions.height}
+        onContextMenu={handleContextMenu}
+      />
 
-      {/* Floating toolbar - center top */}
-      <div className="absolute left-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-xl bg-white p-1.5 shadow-[0_2px_12px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)]">
-        {TOOLS.map((tool, i) => (
-          <div key={tool.key} className="flex items-center">
-            {(i === 4 || i === 6) && (
-              <div className="mx-1 h-5 w-px bg-gray-200" />
-            )}
-            <button
-              onClick={() => setTool(tool.key)}
-              className={`flex h-9 w-9 items-center justify-center rounded-lg text-xs font-medium transition-colors ${
-                activeTool === tool.key
-                  ? 'bg-[#007AFF] text-white'
-                  : 'text-gray-500 hover:bg-gray-50'
-              }`}
-              title={`${tool.label} (${tool.shortcut})`}
-            >
-              {tool.shortcut}
-            </button>
-          </div>
-        ))}
+      {/* Logo — top left */}
+      <div className="absolute left-4 top-4 z-10">
+        <LogoPill />
       </div>
 
-      {/* Logo - top left */}
-      <div className="absolute left-4 top-4 z-10 rounded-xl bg-white px-3 py-2 text-sm font-bold text-[#007AFF] shadow-[0_2px_12px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)]">
-        Flowbase
+      {/* Tool picker — center top */}
+      <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2">
+        <ToolPicker activeTool={activeTool} onToolChange={setTool} />
       </div>
 
-      {/* Zoom controls - bottom left */}
-      <div className="absolute bottom-4 left-4 z-10 flex items-center gap-0.5 rounded-xl bg-white p-1 shadow-[0_2px_12px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)]">
-        <button
-          onClick={() => zoomTo(viewport.zoom / 1.2)}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50"
-        >
-          −
-        </button>
-        <span className="px-2 text-xs text-gray-400">{zoomPercent}%</span>
-        <button
-          onClick={() => zoomTo(viewport.zoom * 1.2)}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-50"
-        >
-          +
-        </button>
+      {/* Actions — top right */}
+      <div className="absolute right-4 top-4 z-10">
+        <ActionGroup
+          canUndo={canUndo()}
+          canRedo={canRedo()}
+          onUndo={undo}
+          onRedo={redo}
+          onExport={() => {/* Phase 5 */}}
+          onSettings={() => {/* Phase 6 */}}
+        />
       </div>
 
-      {/* Status - bottom right */}
-      <div className="absolute bottom-4 right-4 z-10 rounded-xl bg-white px-3 py-1.5 text-xs shadow-[0_2px_12px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)]">
-        <span className="text-gray-400">
-          {elements.length} element{elements.length !== 1 ? 's' : ''}
-          {selectedIds.size > 0 && ` · ${selectedIds.size} selected`}
-        </span>
+      {/* Zoom — bottom left */}
+      <div className="absolute bottom-4 left-4 z-10">
+        <ZoomControls
+          zoom={viewport.zoom}
+          onZoomIn={() => zoomTo(viewport.zoom * 1.2)}
+          onZoomOut={() => zoomTo(viewport.zoom / 1.2)}
+        />
       </div>
+
+      {/* Save indicator — bottom right */}
+      <div className="absolute bottom-4 right-4 z-10">
+        <SaveIndicator status="saved" />
+      </div>
+
+      {/* Context menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          hasSelection={selectedIds.size > 0}
+          onAction={handleContextMenuAction}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 };
