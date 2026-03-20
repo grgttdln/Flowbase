@@ -7,3 +7,9 @@ export type { CanvasState } from './store/useCanvasStore';
 
 // Tools
 export { useToolHandlers } from './tools/useToolHandlers';
+
+// Utils
+export { snapPosition, snapToGrid } from './utils/snapping';
+export type { SnapResult, SnapGuide } from './utils/snapping';
+export { getElementBounds, getSelectionBounds, isPointInBounds, doBoundsOverlap } from './utils/geometry';
+export type { BoundingBox } from './utils/geometry';

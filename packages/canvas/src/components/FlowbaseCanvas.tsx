@@ -5,10 +5,12 @@ import { Stage, Layer } from 'react-konva';
 import type Konva from 'konva';
 import { useCanvasStore } from '../store/useCanvasStore';
 import { useToolHandlers } from '../tools/useToolHandlers';
+import { snapPosition, type SnapGuide } from '../utils/snapping';
 import GridLayer from './GridLayer';
 import ShapeRenderer from './shapes/ShapeRenderer';
 import SelectionLayer from './SelectionLayer';
 import SelectionBox from './SelectionBox';
+import SnapGuides from './SnapGuides';
 
 interface FlowbaseCanvasProps {
   width: number;
@@ -24,14 +26,25 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
     activeTool,
     viewport,
     drawingElement,
+    snapToGrid: snapGridEnabled,
+    snapToElements: snapElementsEnabled,
+    gridSize,
     select,
-    addToSelection,
     toggleSelection,
     deselect,
     updateElement,
     deleteElements,
     copy,
     paste,
+    undo,
+    redo,
+    group,
+    ungroup,
+    bringForward,
+    sendBackward,
+    bringToFront,
+    sendToBack,
+    pushHistory,
     setViewport,
     zoomTo,
   } = useCanvasStore();
@@ -42,6 +55,12 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
   const [isSpaceDown, setIsSpaceDown] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+
+  // Snap guides
+  const [activeGuides, setActiveGuides] = useState<SnapGuide[]>([]);
+
+  // Track if drag has started (for history push)
+  const dragStarted = useRef(false);
 
   // Selection box (drag select)
   const [selectionBox, setSelectionBox] = useState<{
@@ -60,6 +79,7 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (editingTextId) return;
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
 
       if (e.code === 'Space' && !e.repeat) {
         e.preventDefault();
@@ -70,6 +90,13 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
         deleteElements(Array.from(selectedIds));
       }
       if (e.metaKey || e.ctrlKey) {
+        if (e.key === 'z' && e.shiftKey) {
+          e.preventDefault();
+          redo();
+        } else if (e.key === 'z') {
+          e.preventDefault();
+          undo();
+        }
         if (e.key === 'c') {
           e.preventDefault();
           copy();
@@ -81,6 +108,23 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
         if (e.key === 'a') {
           e.preventDefault();
           select(elements.map((el) => el.id));
+        }
+        if (e.key === 'g' && e.shiftKey) {
+          e.preventDefault();
+          ungroup();
+        } else if (e.key === 'g') {
+          e.preventDefault();
+          group();
+        }
+        if (e.key === ']') {
+          e.preventDefault();
+          if (e.shiftKey) bringToFront();
+          else bringForward();
+        }
+        if (e.key === '[') {
+          e.preventDefault();
+          if (e.shiftKey) sendToBack();
+          else sendBackward();
         }
       }
     };
@@ -98,7 +142,7 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [selectedIds, deleteElements, copy, paste, select, elements, editingTextId]);
+  }, [selectedIds, deleteElements, copy, paste, select, elements, editingTextId, undo, redo, group, ungroup, bringForward, sendBackward, bringToFront, sendToBack]);
 
   // Get canvas coordinates from screen coordinates
   const getCanvasPos = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -187,6 +231,8 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
       return;
     }
 
+    setActiveGuides([]);
+    dragStarted.current = false;
     onMouseUp();
   }, [isPanning, selectionBox, onMouseUp]);
 
@@ -212,22 +258,60 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
     if (shiftKey) {
       toggleSelection(id);
     } else {
-      select([id]);
+      // Also select grouped elements
+      const el = elements.find((e) => e.id === id);
+      if (el?.groupId) {
+        const groupIds = elements.filter((e) => e.groupId === el.groupId).map((e) => e.id);
+        select(groupIds);
+      } else {
+        select([id]);
+      }
     }
-  }, [activeTool, select, toggleSelection]);
+  }, [activeTool, select, toggleSelection, elements]);
 
   const handleDragStart = useCallback((id: string) => {
-    if (!selectedIds.has(id)) {
-      select([id]);
+    if (!dragStarted.current) {
+      pushHistory();
+      dragStarted.current = true;
     }
-  }, [selectedIds, select]);
+    if (!selectedIds.has(id)) {
+      const el = elements.find((e) => e.id === id);
+      if (el?.groupId) {
+        const groupIds = elements.filter((e) => e.groupId === el.groupId).map((e) => e.id);
+        select(groupIds);
+      } else {
+        select([id]);
+      }
+    }
+  }, [selectedIds, select, elements, pushHistory]);
 
   const handleDragMove = useCallback((id: string, x: number, y: number) => {
-    updateElement(id, { x, y });
-  }, [updateElement]);
+    const element = elements.find((el) => el.id === id);
+    if (!element) return;
 
-  const handleDragEnd = useCallback((id: string) => {
-    // Position already updated via handleDragMove
+    // Apply snapping
+    const result = snapPosition(
+      x, y, element.width, element.height,
+      elements, id,
+      { snapToGrid: snapGridEnabled, snapToElements: snapElementsEnabled, gridSize },
+    );
+
+    setActiveGuides(result.guides);
+    updateElement(id, { x: result.x, y: result.y });
+
+    // Move grouped elements together
+    if (element.groupId) {
+      const dx = result.x - element.x;
+      const dy = result.y - element.y;
+      elements
+        .filter((el) => el.groupId === element.groupId && el.id !== id)
+        .forEach((el) => updateElement(el.id, { x: el.x + dx, y: el.y + dy }));
+    }
+  }, [elements, updateElement, snapGridEnabled, snapElementsEnabled, gridSize]);
+
+  const handleDragEnd = useCallback(() => {
+    setActiveGuides([]);
+    dragStarted.current = false;
   }, []);
 
   const handleTextDblClick = useCallback((id: string) => {
@@ -270,6 +354,7 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
     input.select();
 
     const handleBlur = () => {
+      pushHistory();
       updateElement(id, { text: input.value });
       input.remove();
       setEditingTextId(null);
@@ -281,7 +366,7 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
         input.blur();
       }
     });
-  }, [elements, viewport.zoom, updateElement]);
+  }, [elements, viewport.zoom, updateElement, pushHistory]);
 
   // Context menu
   const handleContextMenu = useCallback((e: Konva.KonvaEventObject<PointerEvent>) => {
@@ -356,6 +441,14 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
               onTextDblClick={() => {}}
             />
           )}
+          <SnapGuides
+            guides={activeGuides}
+            viewportWidth={width}
+            viewportHeight={height}
+            zoom={viewport.zoom}
+            panX={viewport.panX}
+            panY={viewport.panY}
+          />
           {selectionBox && (
             <SelectionBox
               visible={true}
