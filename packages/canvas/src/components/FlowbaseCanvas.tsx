@@ -54,7 +54,7 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
   // Space+drag panning
   const [isSpaceDown, setIsSpaceDown] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
-  const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const panStart = useRef<{ x: number; y: number; panX: number; panY: number; lastPanX?: number; lastPanY?: number } | null>(null);
 
   // Snap guides
   const [activeGuides, setActiveGuides] = useState<SnapGuide[]>([]);
@@ -184,14 +184,21 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
   }, [isSpaceDown, activeTool, viewport, deselect, getCanvasPos, onMouseDown]);
 
   const handleStageMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
-    // Pan
+    // Pan — manipulate Konva stage directly for smooth 60fps panning
     if (isPanning && panStart.current) {
       const pos = stageRef.current?.getPointerPosition();
       if (pos) {
-        setViewport({
-          panX: panStart.current.panX + (pos.x - panStart.current.x),
-          panY: panStart.current.panY + (pos.y - panStart.current.y),
-        });
+        const newPanX = panStart.current.panX + (pos.x - panStart.current.x);
+        const newPanY = panStart.current.panY + (pos.y - panStart.current.y);
+        const stage = stageRef.current;
+        if (stage) {
+          stage.x(newPanX);
+          stage.y(newPanY);
+          stage.batchDraw();
+        }
+        // Store for sync on mouse up
+        panStart.current.lastPanX = newPanX;
+        panStart.current.lastPanY = newPanY;
       }
       return;
     }
@@ -221,6 +228,13 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
 
   const handleStageMouseUp = useCallback(() => {
     if (isPanning) {
+      // Sync final pan position to Zustand store
+      if (panStart.current && panStart.current.lastPanX != null) {
+        setViewport({
+          panX: panStart.current.lastPanX,
+          panY: panStart.current.lastPanY,
+        });
+      }
       setIsPanning(false);
       panStart.current = null;
       return;
@@ -234,23 +248,55 @@ const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) =
     setActiveGuides([]);
     dragStarted.current = false;
     onMouseUp();
-  }, [isPanning, selectionBox, onMouseUp]);
+  }, [isPanning, selectionBox, onMouseUp, setViewport]);
 
-  // Zoom with scroll wheel
+  // Wheel: trackpad two-finger pan + pinch zoom + mouse scroll zoom
   const handleWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
     const stage = stageRef.current;
     if (!stage) return;
 
-    const pointer = stage.getPointerPosition();
-    if (!pointer) return;
+    const evt = e.evt;
 
-    const scaleBy = 1.05;
-    const direction = e.evt.deltaY > 0 ? -1 : 1;
-    const newZoom = direction > 0 ? viewport.zoom * scaleBy : viewport.zoom / scaleBy;
+    // Trackpad pinch (ctrlKey is set by browser for pinch gestures)
+    if (evt.ctrlKey || evt.metaKey) {
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return;
+      // Use deltaY magnitude for proportional zoom — clamp to avoid huge jumps
+      const delta = -evt.deltaY;
+      const zoomFactor = Math.exp(Math.min(Math.max(delta, -2), 2) * 0.01);
+      const newZoom = viewport.zoom * zoomFactor;
+      zoomTo(newZoom, pointer);
+      return;
+    }
 
-    zoomTo(newZoom, pointer);
-  }, [viewport.zoom, zoomTo]);
+    // Two-finger pan on trackpad (deltaX + deltaY without ctrl)
+    // Also handles mouse wheel if deltaX is ~0
+    if (Math.abs(evt.deltaX) > 0 || !evt.ctrlKey) {
+      // If there's meaningful horizontal delta, treat as trackpad pan
+      if (Math.abs(evt.deltaX) > 1 || Math.abs(evt.deltaY) > 1) {
+        // Heuristic: mouse wheel has deltaMode 0/1/2 and usually no deltaX
+        const isTrackpadPan = Math.abs(evt.deltaX) > 0 || evt.deltaMode === 0;
+
+        if (isTrackpadPan && Math.abs(evt.deltaX) > 0) {
+          // Trackpad two-finger pan
+          setViewport({
+            panX: viewport.panX - evt.deltaX,
+            panY: viewport.panY - evt.deltaY,
+          });
+          return;
+        }
+
+        // Regular mouse scroll wheel — zoom
+        const pointer = stage.getPointerPosition();
+        if (!pointer) return;
+        const direction = evt.deltaY > 0 ? -1 : 1;
+        const zoomFactor = Math.exp(direction * 0.03);
+        const newZoom = viewport.zoom * zoomFactor;
+        zoomTo(newZoom, pointer);
+      }
+    }
+  }, [viewport.zoom, viewport.panX, viewport.panY, zoomTo, setViewport]);
 
   // Element event handlers
   const handleSelect = useCallback((id: string, shiftKey: boolean) => {
