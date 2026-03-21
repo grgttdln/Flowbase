@@ -1,39 +1,89 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { X, Copy, RotateCcw } from 'lucide-react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { X, Copy, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import type { AIActionType } from '@flowbase/shared';
 
-interface AIResponsePopoverProps {
+const ACTION_LABELS: Record<AIActionType, string> = {
+  explain: 'AI: Explain',
+  suggest: 'AI: Suggest',
+  summarize: 'AI: Summarize',
+};
+
+export interface AIResponsePopoverProps {
+  id: string;
   x: number;
   y: number;
+  action: AIActionType;
   text: string;
   isLoading: boolean;
   error: string | null;
-  onClose: () => void;
-  onRetry: () => void;
+  collapsed: boolean;
+  isActive: boolean;
+  onClose: (id: string) => void;
+  onRetry: (id: string) => void;
+  onMove: (id: string, x: number, y: number) => void;
+  onToggleCollapse: (id: string) => void;
+  onActivate: (id: string) => void;
 }
 
-const AIResponsePopover = ({ x, y, text, isLoading, error, onClose, onRetry }: AIResponsePopoverProps) => {
-  const popoverRef = useRef<HTMLDivElement>(null);
+const AIResponsePopover = ({
+  id,
+  x,
+  y,
+  action,
+  text,
+  isLoading,
+  error,
+  collapsed,
+  isActive,
+  onClose,
+  onRetry,
+  onMove,
+  onToggleCollapse,
+  onActivate,
+}: AIResponsePopoverProps) => {
   const contentRef = useRef<HTMLDivElement>(null);
+  const dragOffset = useRef({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
 
   // Auto-scroll as text streams in
   useEffect(() => {
-    if (contentRef.current) {
+    if (contentRef.current && !collapsed) {
       contentRef.current.scrollTop = contentRef.current.scrollHeight;
     }
-  }, [text]);
+  }, [text, collapsed]);
 
-  // Clamp to viewport
-  useEffect(() => {
-    const el = popoverRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const left = Math.min(x, window.innerWidth - rect.width - 16);
-    const top = Math.min(y, window.innerHeight - rect.height - 16);
-    el.style.left = `${Math.max(16, left)}px`;
-    el.style.top = `${Math.max(16, top)}px`;
-  }, [x, y, text]);
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      // Don't drag from buttons
+      if ((e.target as HTMLElement).closest('button')) return;
+      onActivate(id);
+      dragOffset.current = { x: e.clientX - x, y: e.clientY - y };
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      setDragging(true);
+    },
+    [id, x, y, onActivate],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragging) return;
+      const newX = Math.max(16, Math.min(e.clientX - dragOffset.current.x, window.innerWidth - 376));
+      const newY = Math.max(16, Math.min(e.clientY - dragOffset.current.y, window.innerHeight - 100));
+      onMove(id, newX, newY);
+    },
+    [dragging, id, onMove],
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragging) return;
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      setDragging(false);
+    },
+    [dragging],
+  );
 
   const handleCopy = async () => {
     try {
@@ -43,19 +93,45 @@ const AIResponsePopover = ({ x, y, text, isLoading, error, onClose, onRetry }: A
     }
   };
 
+  const preview = text ? text.slice(0, 60) + (text.length > 60 ? '...' : '') : '';
+
   return (
     <div
-      ref={popoverRef}
       role="dialog"
-      aria-label="AI Response"
-      className="fixed z-50 w-[360px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)]"
-      style={{ left: x, top: y, animation: 'contextMenuIn 150ms ease-out' }}
+      aria-label={ACTION_LABELS[action]}
+      className="fixed w-[360px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)]"
+      style={{
+        left: x,
+        top: y,
+        zIndex: isActive ? 51 : 50,
+        animation: 'contextMenuIn 150ms ease-out',
+      }}
+      onPointerDown={() => onActivate(id)}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#F0F0F0] px-4 py-2.5">
-        <span className="text-[13px] font-semibold text-[#007AFF]">AI Response</span>
+      {/* Header — drag handle */}
+      <div
+        className={`flex items-center gap-2 border-b border-[#F0F0F0] px-4 py-2.5 ${
+          dragging ? 'cursor-grabbing' : 'cursor-grab'
+        }`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        <span className="flex-1 truncate text-[13px] font-semibold text-[#007AFF]">
+          {ACTION_LABELS[action]}
+          {collapsed && preview && (
+            <span className="ml-1.5 font-normal text-[#999]">— {preview}</span>
+          )}
+        </span>
         <button
-          onClick={onClose}
+          onClick={() => onToggleCollapse(id)}
+          className="rounded-md p-1 text-[#999] transition-colors hover:bg-black/[0.04] hover:text-[#666]"
+          aria-label={collapsed ? 'Expand' : 'Collapse'}
+        >
+          {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+        </button>
+        <button
+          onClick={() => onClose(id)}
           className="rounded-md p-1 text-[#999] transition-colors hover:bg-black/[0.04] hover:text-[#666]"
           aria-label="Close"
         >
@@ -63,45 +139,50 @@ const AIResponsePopover = ({ x, y, text, isLoading, error, onClose, onRetry }: A
         </button>
       </div>
 
-      {/* Content */}
-      <div
-        ref={contentRef}
-        aria-live="polite"
-        className="max-h-[300px] overflow-y-auto px-4 py-3"
-      >
-        {error ? (
-          <div className="flex flex-col gap-2">
-            <p className="text-[13px] text-red-500">{error}</p>
-            <button
-              onClick={onRetry}
-              className="inline-flex items-center gap-1.5 self-start rounded-lg bg-[#F5F5F5] px-3 py-1.5 text-[12px] font-medium text-[#333] transition-colors hover:bg-[#EBEBEB]"
-            >
-              <RotateCcw size={12} />
-              Retry
-            </button>
-          </div>
-        ) : text ? (
-          <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-[#333]">{text}</p>
-        ) : isLoading ? (
-          <div className="space-y-2">
-            <div className="h-3 w-3/4 animate-pulse rounded bg-[#F0F0F0]" />
-            <div className="h-3 w-1/2 animate-pulse rounded bg-[#F0F0F0]" />
-            <div className="h-3 w-2/3 animate-pulse rounded bg-[#F0F0F0]" />
-          </div>
-        ) : null}
-      </div>
-
-      {/* Footer — only show when there's text */}
-      {text && !error && (
-        <div className="border-t border-[#F0F0F0] px-4 py-2">
-          <button
-            onClick={handleCopy}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-[#666] transition-colors hover:bg-black/[0.04] hover:text-[#333]"
+      {/* Collapsible content */}
+      {!collapsed && (
+        <>
+          {/* Content */}
+          <div
+            ref={contentRef}
+            aria-live="polite"
+            className="max-h-[300px] overflow-y-auto px-4 py-3"
           >
-            <Copy size={12} />
-            Copy
-          </button>
-        </div>
+            {error ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-[13px] text-red-500">{error}</p>
+                <button
+                  onClick={() => onRetry(id)}
+                  className="inline-flex items-center gap-1.5 self-start rounded-lg bg-[#F5F5F5] px-3 py-1.5 text-[12px] font-medium text-[#333] transition-colors hover:bg-[#EBEBEB]"
+                >
+                  <RotateCcw size={12} />
+                  Retry
+                </button>
+              </div>
+            ) : text ? (
+              <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-[#333]">{text}</p>
+            ) : isLoading ? (
+              <div className="space-y-2">
+                <div className="h-3 w-3/4 animate-pulse rounded bg-[#F0F0F0]" />
+                <div className="h-3 w-1/2 animate-pulse rounded bg-[#F0F0F0]" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-[#F0F0F0]" />
+              </div>
+            ) : null}
+          </div>
+
+          {/* Footer — only show when there's text */}
+          {text && !error && (
+            <div className="border-t border-[#F0F0F0] px-4 py-2">
+              <button
+                onClick={handleCopy}
+                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-[#666] transition-colors hover:bg-black/[0.04] hover:text-[#333]"
+              >
+                <Copy size={12} />
+                Copy
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

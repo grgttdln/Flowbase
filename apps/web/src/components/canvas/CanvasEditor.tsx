@@ -5,7 +5,7 @@ import { FlowbaseCanvas, useCanvasStore } from '@flowbase/canvas';
 import type Konva from 'konva';
 import type { ToolType, AIActionType } from '@flowbase/shared';
 import { useAutoSave } from '@/hooks/useAutoSave';
-import { useAIAction } from '@/hooks/useAIAction';
+import { getAISettings } from '@/hooks/useAIAction';
 import ToolPicker from '../toolbar/ToolPicker';
 import LogoPill from '../toolbar/LogoPill';
 import ActionGroup from '../toolbar/ActionGroup';
@@ -16,6 +16,18 @@ import ContextMenu, { type ContextMenuAction } from './ContextMenu';
 import AIResponsePopover from '../ai/AIResponsePopover';
 import SettingsPanel from '../dialogs/SettingsPanel';
 import PropertiesSidebar from '../properties/PropertiesSidebar';
+
+interface AIPopoverInstance {
+  id: string;
+  x: number;
+  y: number;
+  action: AIActionType;
+  text: string;
+  isLoading: boolean;
+  error: string | null;
+  collapsed: boolean;
+  selectedIds?: string[];
+}
 
 interface CanvasEditorProps {
   projectId: string;
@@ -28,8 +40,9 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
   const [exportOpen, setExportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsHint, setSettingsHint] = useState<string | undefined>();
-  const [aiPopover, setAiPopover] = useState<{ x: number; y: number } | null>(null);
-  const [lastAIAction, setLastAIAction] = useState<{ action: AIActionType; ids?: string[] } | null>(null);
+  const [aiPopovers, setAiPopovers] = useState<AIPopoverInstance[]>([]);
+  const [activePopoverId, setActivePopoverId] = useState<string | null>(null);
+  const abortControllers = useRef<Map<string, AbortController>>(new Map());
   const {
     activeTool,
     setTool,
@@ -51,17 +64,8 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
   } = useCanvasStore();
 
   const { status: saveStatus, flushSave } = useAutoSave(projectId, stageRef);
-  const ai = useAIAction();
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; elementId?: string } | null>(null);
-
-  // Open settings if no API key
-  useEffect(() => {
-    if (ai.needsApiKey) {
-      setSettingsHint('Enter your OpenRouter API key to use AI features.');
-      setSettingsOpen(true);
-    }
-  }, [ai.needsApiKey]);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -100,24 +104,149 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
     setContextMenu(e);
   }, []);
 
+  // Stream AI response for a specific popover
+  const streamToPopover = useCallback(
+    async (popoverId: string, action: AIActionType, popoverSelectedIds?: string[]) => {
+      const { apiKey, model } = getAISettings();
+      if (!apiKey) {
+        setSettingsHint('Enter your OpenRouter API key to use AI features.');
+        setSettingsOpen(true);
+        setAiPopovers((prev) => prev.filter((p) => p.id !== popoverId));
+        return;
+      }
+
+      const controller = new AbortController();
+      abortControllers.current.set(popoverId, controller);
+
+      const scene = { version: 1, elements };
+
+      try {
+        const response = await fetch('/api/ai', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({ action, scene, selectedIds: popoverSelectedIds, model }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || `Request failed (${response.status})`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('No response body');
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+            const data = trimmed.slice(6);
+            if (data === '[DONE]') break;
+
+            try {
+              const parsed = JSON.parse(data);
+              if (typeof parsed === 'string') {
+                setAiPopovers((prev) =>
+                  prev.map((p) => (p.id === popoverId ? { ...p, text: p.text + parsed } : p)),
+                );
+              } else if (parsed.error) {
+                throw new Error(parsed.error);
+              }
+            } catch (e) {
+              if (e instanceof Error && e.message !== 'Unexpected') throw e;
+            }
+          }
+        }
+      } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') return;
+        setAiPopovers((prev) =>
+          prev.map((p) =>
+            p.id === popoverId
+              ? { ...p, error: e instanceof Error ? e.message : 'Something went wrong' }
+              : p,
+          ),
+        );
+      } finally {
+        setAiPopovers((prev) =>
+          prev.map((p) => (p.id === popoverId ? { ...p, isLoading: false } : p)),
+        );
+        abortControllers.current.delete(popoverId);
+      }
+    },
+    [elements],
+  );
+
   const runAIAction = useCallback(
     (action: AIActionType, menuX: number, menuY: number) => {
       const ids = Array.from(selectedIds);
-      const scene = { version: 1, elements };
-      setLastAIAction({ action, ids: ids.length > 0 ? ids : undefined });
-      setAiPopover({ x: menuX, y: menuY + 8 });
-      ai.reset();
-      ai.run(action, scene, ids.length > 0 ? ids : undefined);
+      const popoverId = crypto.randomUUID();
+      const instance: AIPopoverInstance = {
+        id: popoverId,
+        x: menuX,
+        y: menuY + 8,
+        action,
+        text: '',
+        isLoading: true,
+        error: null,
+        collapsed: false,
+        selectedIds: ids.length > 0 ? ids : undefined,
+      };
+      setAiPopovers((prev) => [...prev, instance]);
+      setActivePopoverId(popoverId);
+      streamToPopover(popoverId, action, ids.length > 0 ? ids : undefined);
     },
-    [selectedIds, elements, ai],
+    [selectedIds, streamToPopover],
   );
 
-  const handleRetryAI = useCallback(() => {
-    if (!lastAIAction) return;
-    const scene = { version: 1, elements };
-    ai.reset();
-    ai.run(lastAIAction.action, scene, lastAIAction.ids);
-  }, [lastAIAction, elements, ai]);
+  const handleClosePopover = useCallback((id: string) => {
+    const controller = abortControllers.current.get(id);
+    if (controller) {
+      controller.abort();
+      abortControllers.current.delete(id);
+    }
+    setAiPopovers((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  const handleRetryPopover = useCallback(
+    (id: string) => {
+      const popover = aiPopovers.find((p) => p.id === id);
+      if (!popover) return;
+      setAiPopovers((prev) =>
+        prev.map((p) =>
+          p.id === id ? { ...p, text: '', isLoading: true, error: null } : p,
+        ),
+      );
+      streamToPopover(id, popover.action, popover.selectedIds);
+    },
+    [aiPopovers, streamToPopover],
+  );
+
+  const handleMovePopover = useCallback((id: string, x: number, y: number) => {
+    setAiPopovers((prev) => prev.map((p) => (p.id === id ? { ...p, x, y } : p)));
+  }, []);
+
+  const handleToggleCollapse = useCallback((id: string) => {
+    setAiPopovers((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, collapsed: !p.collapsed } : p)),
+    );
+  }, []);
+
+  const handleActivatePopover = useCallback((id: string) => {
+    setActivePopoverId(id);
+  }, []);
 
   const handleContextMenuAction = useCallback((action: ContextMenuAction) => {
     switch (action) {
@@ -226,21 +355,26 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
         />
       )}
 
-      {/* AI Response Popover */}
-      {aiPopover && (
+      {/* AI Response Popovers */}
+      {aiPopovers.map((popover) => (
         <AIResponsePopover
-          x={aiPopover.x}
-          y={aiPopover.y}
-          text={ai.text}
-          isLoading={ai.isLoading}
-          error={ai.error}
-          onClose={() => {
-            ai.abort();
-            setAiPopover(null);
-          }}
-          onRetry={handleRetryAI}
+          key={popover.id}
+          id={popover.id}
+          x={popover.x}
+          y={popover.y}
+          action={popover.action}
+          text={popover.text}
+          isLoading={popover.isLoading}
+          error={popover.error}
+          collapsed={popover.collapsed}
+          isActive={popover.id === activePopoverId}
+          onClose={handleClosePopover}
+          onRetry={handleRetryPopover}
+          onMove={handleMovePopover}
+          onToggleCollapse={handleToggleCollapse}
+          onActivate={handleActivatePopover}
         />
-      )}
+      ))}
 
       {/* Settings Panel */}
       <SettingsPanel
