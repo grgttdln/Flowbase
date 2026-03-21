@@ -1,17 +1,34 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { FlowbaseCanvas, useCanvasStore } from '@flowbase/canvas';
-import type { ToolType } from '@flowbase/shared';
+import type Konva from 'konva';
+import type { ToolType, AIActionType } from '@flowbase/shared';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import { useAIAction } from '@/hooks/useAIAction';
 import ToolPicker from '../toolbar/ToolPicker';
 import LogoPill from '../toolbar/LogoPill';
 import ActionGroup from '../toolbar/ActionGroup';
 import ZoomControls from '../toolbar/ZoomControls';
 import SaveIndicator from '../toolbar/SaveIndicator';
+import ExportDialog from '../dialogs/ExportDialog';
 import ContextMenu, { type ContextMenuAction } from './ContextMenu';
+import AIResponsePopover from '../ai/AIResponsePopover';
+import SettingsPanel from '../dialogs/SettingsPanel';
 
-const CanvasEditor = () => {
+interface CanvasEditorProps {
+  projectId: string;
+  projectName: string;
+}
+
+const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
+  const stageRef = useRef<Konva.Stage>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [exportOpen, setExportOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsHint, setSettingsHint] = useState<string | undefined>();
+  const [aiPopover, setAiPopover] = useState<{ x: number; y: number } | null>(null);
+  const [lastAIAction, setLastAIAction] = useState<{ action: AIActionType; ids?: string[] } | null>(null);
   const {
     activeTool,
     setTool,
@@ -25,13 +42,25 @@ const CanvasEditor = () => {
     paste,
     deleteElements,
     selectedIds,
+    elements,
     group,
     ungroup,
     bringForward,
     sendBackward,
   } = useCanvasStore();
 
+  const { status: saveStatus, flushSave } = useAutoSave(projectId, stageRef);
+  const ai = useAIAction();
+
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; elementId?: string } | null>(null);
+
+  // Open settings if no API key
+  useEffect(() => {
+    if (ai.needsApiKey) {
+      setSettingsHint('Enter your OpenRouter API key to use AI features.');
+      setSettingsOpen(true);
+    }
+  }, [ai.needsApiKey]);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -70,6 +99,25 @@ const CanvasEditor = () => {
     setContextMenu(e);
   }, []);
 
+  const runAIAction = useCallback(
+    (action: AIActionType, menuX: number, menuY: number) => {
+      const ids = Array.from(selectedIds);
+      const scene = { version: 1, elements };
+      setLastAIAction({ action, ids: ids.length > 0 ? ids : undefined });
+      setAiPopover({ x: menuX, y: menuY + 8 });
+      ai.reset();
+      ai.run(action, scene, ids.length > 0 ? ids : undefined);
+    },
+    [selectedIds, elements, ai],
+  );
+
+  const handleRetryAI = useCallback(() => {
+    if (!lastAIAction) return;
+    const scene = { version: 1, elements };
+    ai.reset();
+    ai.run(lastAIAction.action, scene, lastAIAction.ids);
+  }, [lastAIAction, elements, ai]);
+
   const handleContextMenuAction = useCallback((action: ContextMenuAction) => {
     switch (action) {
       case 'copy':
@@ -96,10 +144,12 @@ const CanvasEditor = () => {
       case 'explain':
       case 'suggest':
       case 'summarize':
-        // AI actions — will be wired in Phase 6
+        if (contextMenu) {
+          runAIAction(action, contextMenu.x, contextMenu.y);
+        }
         break;
     }
-  }, [copy, paste, deleteElements, selectedIds, group, ungroup, bringForward, sendBackward]);
+  }, [copy, paste, deleteElements, selectedIds, group, ungroup, bringForward, sendBackward, contextMenu, runAIAction]);
 
   if (dimensions.width === 0) return null;
 
@@ -109,12 +159,13 @@ const CanvasEditor = () => {
       <FlowbaseCanvas
         width={dimensions.width}
         height={dimensions.height}
+        stageRef={stageRef}
         onContextMenu={handleContextMenu}
       />
 
       {/* Logo — top left */}
       <div className="absolute left-4 top-4 z-10">
-        <LogoPill />
+        <LogoPill href="/" onBeforeNavigate={flushSave} />
       </div>
 
       {/* Tool picker — center top */}
@@ -129,8 +180,11 @@ const CanvasEditor = () => {
           canRedo={canRedo()}
           onUndo={undo}
           onRedo={redo}
-          onExport={() => {/* Phase 5 */}}
-          onSettings={() => {/* Phase 6 */}}
+          onExport={() => setExportOpen(true)}
+          onSettings={() => {
+            setSettingsHint(undefined);
+            setSettingsOpen(true);
+          }}
         />
       </div>
 
@@ -145,8 +199,17 @@ const CanvasEditor = () => {
 
       {/* Save indicator — bottom right */}
       <div className="absolute bottom-4 right-4 z-10">
-        <SaveIndicator status="saved" />
+        <SaveIndicator status={saveStatus} onSave={flushSave} />
       </div>
+
+      {/* Export dialog */}
+      {exportOpen && (
+        <ExportDialog
+          projectName={projectName}
+          stageRef={stageRef}
+          onClose={() => setExportOpen(false)}
+        />
+      )}
 
       {/* Context menu */}
       {contextMenu && (
@@ -158,6 +221,29 @@ const CanvasEditor = () => {
           onClose={() => setContextMenu(null)}
         />
       )}
+
+      {/* AI Response Popover */}
+      {aiPopover && (
+        <AIResponsePopover
+          x={aiPopover.x}
+          y={aiPopover.y}
+          text={ai.text}
+          isLoading={ai.isLoading}
+          error={ai.error}
+          onClose={() => {
+            ai.abort();
+            setAiPopover(null);
+          }}
+          onRetry={handleRetryAI}
+        />
+      )}
+
+      {/* Settings Panel */}
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        hint={settingsHint}
+      />
     </div>
   );
 };

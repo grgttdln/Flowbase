@@ -7,4 +7,5 @@ export interface Project {
   thumbnail: string;
   createdAt: number;
   updatedAt: number;
+  deletedAt: number | null;
 }

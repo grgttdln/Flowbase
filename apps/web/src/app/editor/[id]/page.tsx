@@ -1,8 +1,9 @@
 'use client';
 
+import { use } from 'react';
 import dynamic from 'next/dynamic';
 
-const CanvasEditor = dynamic(() => import('@/components/canvas/CanvasEditor'), {
+const EditorLoader = dynamic(() => import('@/components/canvas/EditorLoader'), {
   ssr: false,
   loading: () => (
     <div className="flex min-h-screen items-center justify-center bg-white">
@@ -11,8 +12,9 @@ const CanvasEditor = dynamic(() => import('@/components/canvas/CanvasEditor'), {
   ),
 });
 
-const EditorPage = () => {
-  return <CanvasEditor />;
+const EditorPage = ({ params }: { params: Promise<{ id: string }> }) => {
+  const { id } = use(params);
+  return <EditorLoader projectId={id} />;
 };
 
 export default EditorPage;

@@ -15,11 +15,13 @@ import SnapGuides from './SnapGuides';
 interface FlowbaseCanvasProps {
   width: number;
   height: number;
+  stageRef?: React.RefObject<Konva.Stage | null>;
   onContextMenu?: (e: { x: number; y: number; elementId?: string }) => void;
 }
 
-const FlowbaseCanvas = ({ width, height, onContextMenu }: FlowbaseCanvasProps) => {
-  const stageRef = useRef<Konva.Stage>(null);
+const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMenu }: FlowbaseCanvasProps) => {
+  const internalStageRef = useRef<Konva.Stage>(null);
+  const stageRef = externalStageRef ?? internalStageRef;
   const {
     elements,
     selectedIds,

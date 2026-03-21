@@ -1,11 +1,11 @@
 'use client';
 
 import FloatingPill from '../ui/FloatingPill';
-
-type SaveStatus = 'saved' | 'saving' | 'error';
+import type { SaveStatus } from '@/hooks/useAutoSave';
 
 interface SaveIndicatorProps {
   status: SaveStatus;
+  onSave?: () => void;
 }
 
 const STATUS_CONFIG: Record<SaveStatus, { text: string; color: string }> = {
@@ -14,11 +14,14 @@ const STATUS_CONFIG: Record<SaveStatus, { text: string; color: string }> = {
   error: { text: 'Save failed', color: 'text-[#FF3B30]' },
 };
 
-const SaveIndicator = ({ status }: SaveIndicatorProps) => {
+const SaveIndicator = ({ status, onSave }: SaveIndicatorProps) => {
   const config = STATUS_CONFIG[status];
 
   return (
-    <FloatingPill className="px-3 py-1.5">
+    <FloatingPill
+      className={`px-3 py-1.5 ${onSave ? 'cursor-pointer transition-shadow hover:shadow-[0_2px_12px_rgba(0,0,0,0.12)]' : ''}`}
+      onClick={onSave}
+    >
       <span className={`text-[11px] ${config.color}`}>{config.text}</span>
     </FloatingPill>
   );
