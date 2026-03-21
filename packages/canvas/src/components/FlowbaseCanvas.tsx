@@ -3,6 +3,7 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
 import { Stage, Layer } from 'react-konva';
 import type Konva from 'konva';
+import type { Element } from '@flowbase/shared';
 import { useCanvasStore } from '../store/useCanvasStore';
 import { useToolHandlers } from '../tools/useToolHandlers';
 import { snapPosition, type SnapGuide } from '../utils/snapping';
@@ -12,7 +13,8 @@ import SelectionLayer from './SelectionLayer';
 import SelectionBox from './SelectionBox';
 import SnapGuides from './SnapGuides';
 import ConnectionPoints from './ConnectionPoints';
-import { recalcBoundArrow } from '../utils/connectors';
+import ArrowControls from './ArrowControls';
+import { recalcBoundArrow, findNearestAnchor } from '../utils/connectors';
 
 interface FlowbaseCanvasProps {
   width: number;
@@ -78,6 +80,15 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
   // Text editing
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
+
+  // Arrow endpoint dragging state
+  const [draggingEndpoint, setDraggingEndpoint] = useState<{
+    elementId: string;
+    pointIndex: number;
+    x: number;
+    y: number;
+  } | null>(null);
+  const endpointAnchor = useRef<ReturnType<typeof findNearestAnchor>>(null);
 
   // Keyboard events
   useEffect(() => {
@@ -443,6 +454,106 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
     });
   }, [elements, viewport.zoom, updateElement, pushHistory]);
 
+  // Arrow endpoint drag handlers
+  const handleEndpointDragStart = useCallback((elementId: string, pointIndex: number) => {
+    pushHistory();
+    const el = elements.find((e) => e.id === elementId);
+    if (!el) return;
+    const pts = el.points ?? [0, 0, el.width, el.height];
+    const absX = el.x + (pts[pointIndex * 2] ?? 0);
+    const absY = el.y + (pts[pointIndex * 2 + 1] ?? 0);
+    setDraggingEndpoint({ elementId, pointIndex, x: absX, y: absY });
+    endpointAnchor.current = null;
+  }, [elements, pushHistory]);
+
+  const handleEndpointDragMove = useCallback((elementId: string, pointIndex: number, x: number, y: number) => {
+    const el = elements.find((e) => e.id === elementId);
+    if (!el) return;
+
+    const pts = el.points ? [...el.points] : [0, 0, el.width, el.height];
+    const totalPoints = pts.length / 2;
+    const isStart = pointIndex === 0;
+    const isEnd = pointIndex === totalPoints - 1;
+
+    // Snap endpoints to shape anchors
+    let snapX = x;
+    let snapY = y;
+    if (isStart || isEnd) {
+      const anchor = findNearestAnchor(x, y, elements, elementId);
+      endpointAnchor.current = anchor;
+      if (anchor) {
+        snapX = anchor.x;
+        snapY = anchor.y;
+      }
+    }
+
+    setDraggingEndpoint({ elementId, pointIndex, x: snapX, y: snapY });
+
+    if (isStart) {
+      // Moving start point: shift the element origin, adjust all other points
+      const dx = snapX - el.x;
+      const dy = snapY - el.y;
+      const newPts = [...pts];
+      // Adjust all points except start to stay in same absolute position
+      for (let i = 2; i < newPts.length; i += 2) {
+        newPts[i] -= dx;
+        newPts[i + 1] -= dy;
+      }
+      newPts[0] = 0;
+      newPts[1] = 0;
+      updateElement(elementId, { x: snapX, y: snapY, points: newPts });
+    } else {
+      // Moving midpoint or end: just update the relative point
+      const newPts = [...pts];
+      newPts[pointIndex * 2] = snapX - el.x;
+      newPts[pointIndex * 2 + 1] = snapY - el.y;
+      updateElement(elementId, { points: newPts });
+    }
+  }, [elements, updateElement]);
+
+  const handleEndpointDragEnd = useCallback((elementId: string, pointIndex: number) => {
+    const el = elements.find((e) => e.id === elementId);
+    if (!el) return;
+
+    const pts = el.points ?? [0, 0, el.width, el.height];
+    const totalPoints = pts.length / 2;
+    const isStart = pointIndex === 0;
+    const isEnd = pointIndex === totalPoints - 1;
+
+    // Update bindings for endpoints
+    if (isStart || isEnd) {
+      const anchor = endpointAnchor.current;
+      const bindingUpdate: Partial<Element> = {};
+      if (isStart) {
+        bindingUpdate.startBinding = anchor
+          ? { elementId: anchor.elementId, anchor: anchor.anchor }
+          : undefined;
+      } else {
+        bindingUpdate.endBinding = anchor
+          ? { elementId: anchor.elementId, anchor: anchor.anchor }
+          : undefined;
+      }
+      updateElement(elementId, bindingUpdate);
+    }
+
+    setDraggingEndpoint(null);
+    endpointAnchor.current = null;
+  }, [elements, updateElement]);
+
+  const handleSegmentDblClick = useCallback((elementId: string, segmentIndex: number, x: number, y: number) => {
+    const el = elements.find((e) => e.id === elementId);
+    if (!el) return;
+
+    pushHistory();
+    const pts = el.points ? [...el.points] : [0, 0, el.width, el.height];
+    // Insert a new point after segmentIndex (relative to element position)
+    const insertAt = (segmentIndex + 1) * 2;
+    const relX = x - el.x;
+    const relY = y - el.y;
+    pts.splice(insertAt, 0, relX, relY);
+    updateElement(elementId, { points: pts });
+  }, [elements, updateElement, pushHistory]);
+
   // Context menu
   const handleContextMenu = useCallback((e: Konva.KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();
@@ -528,6 +639,26 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
               />
             ) : null;
           })()}
+          {activeTool === 'select' && elements
+            .filter((el) => (el.type === 'line' || el.type === 'arrow') && selectedIds.has(el.id))
+            .map((el) => (
+              <ArrowControls
+                key={`ctrl-${el.id}`}
+                element={el}
+                onEndpointDragStart={handleEndpointDragStart}
+                onEndpointDragMove={handleEndpointDragMove}
+                onEndpointDragEnd={handleEndpointDragEnd}
+                onSegmentDblClick={handleSegmentDblClick}
+              />
+            ))}
+          {draggingEndpoint && (
+            <ConnectionPoints
+              elements={elements}
+              nearX={draggingEndpoint.x}
+              nearY={draggingEndpoint.y}
+              snappedAnchor={endpointAnchor.current}
+            />
+          )}
           <SnapGuides
             guides={activeGuides}
             viewportWidth={width}

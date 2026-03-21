@@ -64,7 +64,7 @@ export function findNearestAnchor(
   return nearest;
 }
 
-/** Recalculate arrow points based on its bindings */
+/** Recalculate arrow points based on its bindings, preserving midpoints */
 export function recalcBoundArrow(
   arrow: Element,
   elements: Element[],
@@ -75,17 +75,23 @@ export function recalcBoundArrow(
   const points = arrow.points ? [...arrow.points] : [0, 0, 0, 0];
   if (points.length < 4) return null;
 
-  let startX = arrow.x + points[0];
-  let startY = arrow.y + points[1];
-  let endX = arrow.x + points[points.length - 2];
-  let endY = arrow.y + points[points.length - 1];
+  // Current absolute start and end
+  const oldStartX = arrow.x + points[0];
+  const oldStartY = arrow.y + points[1];
+  const oldEndX = arrow.x + points[points.length - 2];
+  const oldEndY = arrow.y + points[points.length - 1];
+
+  let newStartX = oldStartX;
+  let newStartY = oldStartY;
+  let newEndX = oldEndX;
+  let newEndY = oldEndY;
 
   if (startBinding) {
     const target = elements.find((el) => el.id === startBinding.elementId);
     if (target) {
       const pos = getAnchorPosition(target, startBinding.anchor);
-      startX = pos.x;
-      startY = pos.y;
+      newStartX = pos.x;
+      newStartY = pos.y;
     }
   }
 
@@ -93,17 +99,35 @@ export function recalcBoundArrow(
     const target = elements.find((el) => el.id === endBinding.elementId);
     if (target) {
       const pos = getAnchorPosition(target, endBinding.anchor);
-      endX = pos.x;
-      endY = pos.y;
+      newEndX = pos.x;
+      newEndY = pos.y;
     }
   }
 
-  // Arrow x,y is the start point; points are relative to x,y
+  // Shift midpoints proportionally when endpoints move
+  const newPoints: number[] = [0, 0];
+  if (points.length > 4) {
+    // There are midpoints — shift them based on endpoint deltas
+    const startDx = newStartX - oldStartX;
+    const startDy = newStartY - oldStartY;
+    const endDx = newEndX - oldEndX;
+    const endDy = newEndY - oldEndY;
+    const totalPairs = points.length / 2;
+    for (let i = 1; i < totalPairs - 1; i++) {
+      // Interpolate: midpoints closer to start move with start, closer to end move with end
+      const t = i / (totalPairs - 1);
+      const absX = arrow.x + points[i * 2] + startDx * (1 - t) + endDx * t;
+      const absY = arrow.y + points[i * 2 + 1] + startDy * (1 - t) + endDy * t;
+      newPoints.push(absX - newStartX, absY - newStartY);
+    }
+  }
+  newPoints.push(newEndX - newStartX, newEndY - newStartY);
+
   return {
-    x: startX,
-    y: startY,
-    points: [0, 0, endX - startX, endY - startY],
-    width: Math.abs(endX - startX),
-    height: Math.abs(endY - startY),
+    x: newStartX,
+    y: newStartY,
+    points: newPoints,
+    width: Math.abs(newEndX - newStartX),
+    height: Math.abs(newEndY - newStartY),
   };
 }

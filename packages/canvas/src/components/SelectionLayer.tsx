@@ -19,7 +19,12 @@ const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
     const layer = transformer.getLayer();
     if (!layer) return;
 
+    // Exclude line/arrow elements — they use custom ArrowControls instead of Transformer
+    const lineArrowIds = new Set(
+      elements.filter((el) => el.type === 'line' || el.type === 'arrow').map((el) => el.id),
+    );
     const selectedNodes = Array.from(selectedIds)
+      .filter((id) => !lineArrowIds.has(id))
       .map((id) => stage.findOne(`#${id}`))
       .filter((node): node is Konva.Node => node !== null && node !== undefined);
 
