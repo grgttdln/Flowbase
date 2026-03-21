@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import type { ToolType, Element } from '@flowbase/shared';
 import { DEFAULT_ELEMENT_PROPS, DEFAULT_STROKE, generateId } from '@flowbase/shared';
 import { useCanvasStore } from '../store/useCanvasStore';
+import { useStyleDefaults, getToolCategory } from '../store/useStyleDefaults';
 
 export const useToolHandlers = () => {
   const startPos = useRef<{ x: number; y: number } | null>(null);
@@ -18,11 +19,26 @@ export const useToolHandlers = () => {
     elements,
   } = useCanvasStore();
 
-  const getShapeDefaults = useCallback(() => ({
-    ...DEFAULT_ELEMENT_PROPS,
-    stroke: DEFAULT_STROKE,
-    fill: 'transparent',
-  }), []);
+  const styleDefaults = useStyleDefaults();
+
+  const getShapeDefaults = useCallback(() => {
+    const category = getToolCategory(activeTool);
+    if (category) {
+      const defaults = styleDefaults[category];
+      return {
+        ...DEFAULT_ELEMENT_PROPS,
+        stroke: defaults.stroke,
+        fill: defaults.fill,
+        strokeWidth: defaults.strokeWidth,
+        opacity: defaults.opacity,
+      };
+    }
+    return {
+      ...DEFAULT_ELEMENT_PROPS,
+      stroke: DEFAULT_STROKE,
+      fill: 'transparent',
+    };
+  }, [activeTool, styleDefaults]);
 
   const onMouseDown = useCallback((x: number, y: number) => {
     if (activeTool === 'select') return;
@@ -45,6 +61,7 @@ export const useToolHandlers = () => {
       };
       setDrawingElement(tempElement);
     } else if (activeTool === 'text') {
+      const textDefaults = styleDefaults.text;
       addElement({
         type: 'text',
         x,
@@ -52,9 +69,9 @@ export const useToolHandlers = () => {
         width: 200,
         height: 30,
         text: 'Text',
-        fontSize: 16,
+        fontSize: textDefaults.fontSize,
         ...getShapeDefaults(),
-        stroke: '#1C1C1E',
+        stroke: textDefaults.stroke,
       });
       setIsDrawing(false);
     } else {

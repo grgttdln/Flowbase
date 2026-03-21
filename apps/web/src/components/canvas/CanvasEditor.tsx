@@ -15,6 +15,7 @@ import ExportDialog from '../dialogs/ExportDialog';
 import ContextMenu, { type ContextMenuAction } from './ContextMenu';
 import AIResponsePopover from '../ai/AIResponsePopover';
 import SettingsPanel from '../dialogs/SettingsPanel';
+import PropertiesSidebar from '../properties/PropertiesSidebar';
 
 interface CanvasEditorProps {
   projectId: string;
@@ -201,6 +202,9 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
       <div className="absolute bottom-4 right-4 z-10">
         <SaveIndicator status={saveStatus} onSave={flushSave} />
       </div>
+
+      {/* Properties sidebar */}
+      <PropertiesSidebar />
 
       {/* Export dialog */}
       {exportOpen && (
