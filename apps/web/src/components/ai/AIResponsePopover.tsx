@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { X, Copy, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import type { AIActionType } from '@flowbase/shared';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github.css';
 
 const ACTION_LABELS: Record<AIActionType, string> = {
   explain: 'AI: Explain',
@@ -160,7 +164,19 @@ const AIResponsePopover = ({
                 </button>
               </div>
             ) : text ? (
-              <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-[#333]">{text}</p>
+              <div className="ai-markdown max-w-none text-[13px] leading-relaxed text-[#333]">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeHighlight]}
+                  components={{
+                    a: ({ ...props }) => (
+                      <a target="_blank" rel="noopener noreferrer" {...props} />
+                    ),
+                  }}
+                >
+                  {text}
+                </ReactMarkdown>
+              </div>
             ) : isLoading ? (
               <div className="space-y-2">
                 <div className="h-3 w-3/4 animate-pulse rounded bg-[#F0F0F0]" />
