@@ -551,7 +551,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
     const relX = x - el.x;
     const relY = y - el.y;
     pts.splice(insertAt, 0, relX, relY);
-    updateElement(elementId, { points: pts });
+    updateElement(elementId, { points: pts, autoRoute: false });
   }, [elements, updateElement, pushHistory]);
 
   // Context menu

@@ -32,6 +32,7 @@ export interface Element {
   groupId?: string;
   startBinding?: Binding;
   endBinding?: Binding;
+  autoRoute?: boolean;
   zIndex: number;
   locked: boolean;
 }

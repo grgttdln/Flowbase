@@ -3,7 +3,7 @@ import type { ToolType, Element, Binding } from '@flowbase/shared';
 import { DEFAULT_ELEMENT_PROPS, DEFAULT_STROKE, generateId } from '@flowbase/shared';
 import { useCanvasStore } from '../store/useCanvasStore';
 import { useStyleDefaults, getToolCategory } from '../store/useStyleDefaults';
-import { findNearestAnchor, type AnchorPoint } from '../utils/connectors';
+import { findNearestAnchor, recalcBoundArrow, type AnchorPoint } from '../utils/connectors';
 
 export const useToolHandlers = () => {
   const startPos = useRef<{ x: number; y: number } | null>(null);
@@ -178,6 +178,16 @@ export const useToolHandlers = () => {
         }
         if (endAnchor.current) {
           rest.endBinding = { elementId: endAnchor.current.elementId, anchor: endAnchor.current.anchor };
+        }
+        // Enable auto-routing when both endpoints are bound
+        if (startAnchor.current && endAnchor.current) {
+          rest.autoRoute = true;
+          // Calculate initial orthogonal route
+          const tempArrow = { ...rest, id: '__temp__', zIndex: 0 } as Element;
+          const routed = recalcBoundArrow(tempArrow, elements);
+          if (routed) {
+            Object.assign(rest, routed);
+          }
         }
       }
       addElement(rest);
