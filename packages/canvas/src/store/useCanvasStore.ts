@@ -94,8 +94,21 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const state = get();
     state.pushHistory();
     const idSet = new Set(ids);
+    // Remove deleted elements and unbind arrows that referenced them
+    const remaining = state.elements
+      .filter((el) => !idSet.has(el.id))
+      .map((el) => {
+        let updated = el;
+        if (el.startBinding && idSet.has(el.startBinding.elementId)) {
+          updated = { ...updated, startBinding: undefined };
+        }
+        if (el.endBinding && idSet.has(el.endBinding.elementId)) {
+          updated = { ...updated, endBinding: undefined };
+        }
+        return updated;
+      });
     set({
-      elements: state.elements.filter((el) => !idSet.has(el.id)),
+      elements: remaining,
       selectedIds: new Set(),
     });
   },

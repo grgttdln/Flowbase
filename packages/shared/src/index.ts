@@ -1,5 +1,5 @@
 // Types
-export type { Element, ElementType } from './types/element';
+export type { Element, ElementType, Binding, AnchorPosition } from './types/element';
 export type { SerializedScene } from './types/scene';
 export type { Project } from './types/project';
 export type { ToolType } from './types/tools';

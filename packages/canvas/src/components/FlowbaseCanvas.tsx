@@ -11,6 +11,8 @@ import ShapeRenderer from './shapes/ShapeRenderer';
 import SelectionLayer from './SelectionLayer';
 import SelectionBox from './SelectionBox';
 import SnapGuides from './SnapGuides';
+import ConnectionPoints from './ConnectionPoints';
+import { recalcBoundArrow } from '../utils/connectors';
 
 interface FlowbaseCanvasProps {
   width: number;
@@ -51,7 +53,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
     zoomTo,
   } = useCanvasStore();
 
-  const { onMouseDown, onMouseMove, onMouseUp, getCursor } = useToolHandlers();
+  const { onMouseDown, onMouseMove, onMouseUp, getCursor, getDrawingEndpoint, getSnappedAnchor } = useToolHandlers();
 
   // Space+drag panning
   const [isSpaceDown, setIsSpaceDown] = useState(false);
@@ -355,6 +357,31 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
         .filter((el) => el.groupId === element.groupId && el.id !== id)
         .forEach((el) => updateElement(el.id, { x: el.x + dx, y: el.y + dy }));
     }
+
+    // Update all arrows bound to this element (and grouped elements)
+    const movedIds = new Set([id]);
+    if (element.groupId) {
+      elements.filter((el) => el.groupId === element.groupId).forEach((el) => movedIds.add(el.id));
+    }
+    // Build updated elements list with new positions for recalculation
+    const updatedElements = elements.map((el) => {
+      if (el.id === id) return { ...el, x: result.x, y: result.y };
+      if (element.groupId && el.groupId === element.groupId && el.id !== id) {
+        const ddx = result.x - element.x;
+        const ddy = result.y - element.y;
+        return { ...el, x: el.x + ddx, y: el.y + ddy };
+      }
+      return el;
+    });
+    for (const el of elements) {
+      if (el.type !== 'line' && el.type !== 'arrow') continue;
+      const startBound = el.startBinding && movedIds.has(el.startBinding.elementId);
+      const endBound = el.endBinding && movedIds.has(el.endBinding.elementId);
+      if (startBound || endBound) {
+        const updates = recalcBoundArrow(el, updatedElements);
+        if (updates) updateElement(el.id, updates);
+      }
+    }
   }, [elements, updateElement, snapGridEnabled, snapElementsEnabled, gridSize]);
 
   const handleDragEnd = useCallback(() => {
@@ -489,6 +516,18 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
               onTextDblClick={() => {}}
             />
           )}
+          {(activeTool === 'line' || activeTool === 'arrow') && (() => {
+            const endpoint = getDrawingEndpoint();
+            const snapped = getSnappedAnchor();
+            return endpoint ? (
+              <ConnectionPoints
+                elements={elements}
+                nearX={endpoint.x}
+                nearY={endpoint.y}
+                snappedAnchor={snapped}
+              />
+            ) : null;
+          })()}
           <SnapGuides
             guides={activeGuides}
             viewportWidth={width}

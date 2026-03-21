@@ -1,12 +1,15 @@
 import { useCallback, useRef } from 'react';
-import type { ToolType, Element } from '@flowbase/shared';
+import type { ToolType, Element, Binding } from '@flowbase/shared';
 import { DEFAULT_ELEMENT_PROPS, DEFAULT_STROKE, generateId } from '@flowbase/shared';
 import { useCanvasStore } from '../store/useCanvasStore';
 import { useStyleDefaults, getToolCategory } from '../store/useStyleDefaults';
+import { findNearestAnchor, type AnchorPoint } from '../utils/connectors';
 
 export const useToolHandlers = () => {
   const startPos = useRef<{ x: number; y: number } | null>(null);
   const freehandPoints = useRef<number[]>([]);
+  const startAnchor = useRef<AnchorPoint | null>(null);
+  const endAnchor = useRef<AnchorPoint | null>(null);
 
   const {
     activeTool,
@@ -43,7 +46,22 @@ export const useToolHandlers = () => {
   const onMouseDown = useCallback((x: number, y: number) => {
     if (activeTool === 'select') return;
 
-    startPos.current = { x, y };
+    startAnchor.current = null;
+    endAnchor.current = null;
+
+    // Snap start point for line/arrow
+    let sx = x;
+    let sy = y;
+    if (activeTool === 'line' || activeTool === 'arrow') {
+      const anchor = findNearestAnchor(x, y, elements);
+      if (anchor) {
+        sx = anchor.x;
+        sy = anchor.y;
+        startAnchor.current = anchor;
+      }
+    }
+
+    startPos.current = { x: sx, y: sy };
     setIsDrawing(true);
 
     if (activeTool === 'freehand') {
@@ -51,8 +69,8 @@ export const useToolHandlers = () => {
       const tempElement: Element = {
         id: '__drawing__',
         type: 'freehand',
-        x,
-        y,
+        x: sx,
+        y: sy,
         width: 0,
         height: 0,
         points: [0, 0],
@@ -78,8 +96,8 @@ export const useToolHandlers = () => {
       const tempElement: Element = {
         id: '__drawing__',
         type: activeTool as Element['type'],
-        x,
-        y,
+        x: sx,
+        y: sy,
         width: 0,
         height: 0,
         points: activeTool === 'line' || activeTool === 'arrow' ? [0, 0, 0, 0] : undefined,
@@ -88,7 +106,7 @@ export const useToolHandlers = () => {
       };
       setDrawingElement(tempElement);
     }
-  }, [activeTool, addElement, setIsDrawing, setDrawingElement, getShapeDefaults]);
+  }, [activeTool, addElement, setIsDrawing, setDrawingElement, getShapeDefaults, elements]);
 
   const onMouseMove = useCallback((x: number, y: number) => {
     if (!isDrawing || !startPos.current || !drawingElement) return;
@@ -105,11 +123,24 @@ export const useToolHandlers = () => {
         points: [...freehandPoints.current],
       });
     } else if (activeTool === 'line' || activeTool === 'arrow') {
+      // Snap end point to nearest anchor
+      let endX = x;
+      let endY = y;
+      const anchor = findNearestAnchor(x, y, elements, startAnchor.current?.elementId);
+      if (anchor) {
+        endX = anchor.x;
+        endY = anchor.y;
+        endAnchor.current = anchor;
+      } else {
+        endAnchor.current = null;
+      }
+      const sdx = endX - startPos.current!.x;
+      const sdy = endY - startPos.current!.y;
       setDrawingElement({
         ...drawingElement,
-        points: [0, 0, dx, dy],
-        width: Math.abs(dx),
-        height: Math.abs(dy),
+        points: [0, 0, sdx, sdy],
+        width: Math.abs(sdx),
+        height: Math.abs(sdy),
       });
     } else {
       const newX = dx >= 0 ? startPos.current.x : x;
@@ -140,6 +171,15 @@ export const useToolHandlers = () => {
 
     if (hasSize) {
       const { id, zIndex, ...rest } = drawingElement;
+      // Attach bindings for line/arrow
+      if ((activeTool === 'line' || activeTool === 'arrow') && (startAnchor.current || endAnchor.current)) {
+        if (startAnchor.current) {
+          rest.startBinding = { elementId: startAnchor.current.elementId, anchor: startAnchor.current.anchor };
+        }
+        if (endAnchor.current) {
+          rest.endBinding = { elementId: endAnchor.current.elementId, anchor: endAnchor.current.anchor };
+        }
+      }
       addElement(rest);
     }
 
@@ -147,6 +187,8 @@ export const useToolHandlers = () => {
     setIsDrawing(false);
     startPos.current = null;
     freehandPoints.current = [];
+    startAnchor.current = null;
+    endAnchor.current = null;
   }, [isDrawing, drawingElement, activeTool, addElement, setDrawingElement, setIsDrawing]);
 
   const getCursor = useCallback((): string => {
@@ -160,5 +202,16 @@ export const useToolHandlers = () => {
     }
   }, [activeTool]);
 
-  return { onMouseDown, onMouseMove, onMouseUp, getCursor };
+  /** Current drawing endpoint — used to show connection points nearby */
+  const getDrawingEndpoint = useCallback((): { x: number; y: number } | null => {
+    if (!isDrawing || !drawingElement || !startPos.current) return null;
+    if (activeTool !== 'line' && activeTool !== 'arrow') return null;
+    const pts = drawingElement.points;
+    if (!pts || pts.length < 4) return null;
+    return { x: startPos.current.x + pts[pts.length - 2], y: startPos.current.y + pts[pts.length - 1] };
+  }, [isDrawing, drawingElement, activeTool]);
+
+  const getSnappedAnchor = useCallback(() => endAnchor.current, []);
+
+  return { onMouseDown, onMouseMove, onMouseUp, getCursor, getDrawingEndpoint, getSnappedAnchor };
 };

@@ -7,6 +7,13 @@ export type ElementType =
   | 'freehand'
   | 'text';
 
+export type AnchorPosition = 'top' | 'bottom' | 'left' | 'right';
+
+export interface Binding {
+  elementId: string;
+  anchor: AnchorPosition;
+}
+
 export interface Element {
   id: string;
   type: ElementType;
@@ -23,6 +30,8 @@ export interface Element {
   text?: string;
   fontSize?: number;
   groupId?: string;
+  startBinding?: Binding;
+  endBinding?: Binding;
   zIndex: number;
   locked: boolean;
 }

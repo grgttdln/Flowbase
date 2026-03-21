@@ -33,6 +33,14 @@ function describeElement(el: Element): string {
     parts.push(`text: "${el.text}"`);
   }
 
+  // Bindings
+  if (el.startBinding) {
+    parts.push(`connected from: ${el.startBinding.elementId.slice(0, 6)} (${el.startBinding.anchor})`);
+  }
+  if (el.endBinding) {
+    parts.push(`connected to: ${el.endBinding.elementId.slice(0, 6)} (${el.endBinding.anchor})`);
+  }
+
   // Group
   if (el.groupId) {
     parts.push(`group: ${el.groupId.slice(0, 6)}`);
