@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { streamChat, serializeElements, buildMessages, AIError } from '@flowbase/ai';
 import type { AIActionType, Element } from '@flowbase/shared';
 
-const VALID_ACTIONS: AIActionType[] = ['explain', 'suggest', 'summarize'];
+const VALID_ACTIONS: AIActionType[] = ['explain', 'suggest', 'summarize', 'generate'];
 
 export async function POST(req: NextRequest) {
   // Auth
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const apiKey = authHeader.slice(7);
 
   // Parse body
-  let body: { action?: string; scene?: { elements?: Element[] }; selectedIds?: string[]; model?: string };
+  let body: { action?: string; scene?: { elements?: Element[] }; selectedIds?: string[]; model?: string; prompt?: string };
   try {
     body = await req.json();
   } catch {
@@ -21,31 +21,39 @@ export async function POST(req: NextRequest) {
   }
 
   // Validate
-  const { action, scene, selectedIds, model } = body;
+  const { action, scene, selectedIds, model, prompt } = body;
   if (!action || !VALID_ACTIONS.includes(action as AIActionType)) {
     return Response.json({ error: 'Invalid action' }, { status: 400 });
   }
-  if (!scene?.elements || !Array.isArray(scene.elements)) {
-    return Response.json({ error: 'Invalid scene' }, { status: 400 });
-  }
-  if (selectedIds && !Array.isArray(selectedIds)) {
-    return Response.json({ error: 'Invalid selectedIds' }, { status: 400 });
-  }
 
-  // Filter elements
-  let elements = scene.elements;
-  if (selectedIds && selectedIds.length > 0) {
-    const idSet = new Set(selectedIds);
-    elements = elements.filter((el) => idSet.has(el.id));
-  }
+  // Build prompt based on action type
+  let messages;
+  if (action === 'generate') {
+    if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+      return Response.json({ error: 'Prompt required for generate action' }, { status: 400 });
+    }
+    messages = buildMessages('generate', prompt.trim());
+  } else {
+    if (!scene?.elements || !Array.isArray(scene.elements)) {
+      return Response.json({ error: 'Invalid scene' }, { status: 400 });
+    }
+    if (selectedIds && !Array.isArray(selectedIds)) {
+      return Response.json({ error: 'Invalid selectedIds' }, { status: 400 });
+    }
 
-  if (elements.length === 0) {
-    return Response.json({ error: 'No elements to analyze' }, { status: 400 });
-  }
+    let elements = scene.elements;
+    if (selectedIds && selectedIds.length > 0) {
+      const idSet = new Set(selectedIds);
+      elements = elements.filter((el) => idSet.has(el.id));
+    }
 
-  // Build prompt
-  const serialized = serializeElements(elements);
-  const messages = buildMessages(action as AIActionType, serialized);
+    if (elements.length === 0) {
+      return Response.json({ error: 'No elements to analyze' }, { status: 400 });
+    }
+
+    const serialized = serializeElements(elements);
+    messages = buildMessages(action as AIActionType, serialized);
+  }
 
   // Stream response
   try {

@@ -12,6 +12,7 @@ const ACTION_LABELS: Record<AIActionType, string> = {
   explain: 'AI: Explain',
   suggest: 'AI: Suggest',
   summarize: 'AI: Summarize',
+  generate: 'AI: Generate',
 };
 
 export interface AIResponsePopoverProps {

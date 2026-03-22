@@ -1,6 +1,6 @@
 import type { SerializedScene } from './scene';
 
-export type AIActionType = 'explain' | 'suggest' | 'summarize';
+export type AIActionType = 'explain' | 'suggest' | 'summarize' | 'generate';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
