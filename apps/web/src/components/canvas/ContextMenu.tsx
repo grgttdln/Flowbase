@@ -13,6 +13,15 @@ import {
   MessageSquare,
   Lightbulb,
   FileText,
+  Wand2,
+  AlignStartVertical,
+  AlignCenterVertical,
+  AlignEndVertical,
+  AlignStartHorizontal,
+  AlignCenterHorizontal,
+  AlignEndHorizontal,
+  AlignHorizontalSpaceAround,
+  AlignVerticalSpaceAround,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -24,9 +33,18 @@ export type ContextMenuAction =
   | 'ungroup'
   | 'bringForward'
   | 'sendBackward'
+  | 'alignLeft'
+  | 'alignCenterH'
+  | 'alignRight'
+  | 'alignTop'
+  | 'alignCenterV'
+  | 'alignBottom'
+  | 'distributeH'
+  | 'distributeV'
   | 'explain'
   | 'suggest'
-  | 'summarize';
+  | 'summarize'
+  | 'generate';
 
 interface MenuItem {
   action: ContextMenuAction;
@@ -35,9 +53,11 @@ interface MenuItem {
   shortcut?: string;
   isAI?: boolean;
   needsSelection?: boolean;
+  needsMultiSelection?: boolean;
 }
 
 const MENU_ITEMS: (MenuItem | 'divider')[] = [
+  { action: 'generate', label: 'Generate Diagram', icon: Wand2, isAI: true },
   { action: 'explain', label: 'Explain', icon: MessageSquare, isAI: true, needsSelection: true },
   { action: 'suggest', label: 'Suggest improvements', icon: Lightbulb, isAI: true, needsSelection: true },
   { action: 'summarize', label: 'Summarize', icon: FileText, isAI: true },
@@ -51,17 +71,27 @@ const MENU_ITEMS: (MenuItem | 'divider')[] = [
   'divider',
   { action: 'bringForward', label: 'Bring forward', icon: ArrowUp, shortcut: '⌘]', needsSelection: true },
   { action: 'sendBackward', label: 'Send backward', icon: ArrowDown, shortcut: '⌘[', needsSelection: true },
+  'divider',
+  { action: 'alignLeft', label: 'Align left', icon: AlignStartVertical, shortcut: '⌘⇧L', needsMultiSelection: true },
+  { action: 'alignCenterH', label: 'Align center', icon: AlignCenterVertical, shortcut: '⌘⇧C', needsMultiSelection: true },
+  { action: 'alignRight', label: 'Align right', icon: AlignEndVertical, shortcut: '⌘⇧R', needsMultiSelection: true },
+  { action: 'alignTop', label: 'Align top', icon: AlignStartHorizontal, needsMultiSelection: true },
+  { action: 'alignCenterV', label: 'Align middle', icon: AlignCenterHorizontal, needsMultiSelection: true },
+  { action: 'alignBottom', label: 'Align bottom', icon: AlignEndHorizontal, needsMultiSelection: true },
+  { action: 'distributeH', label: 'Distribute horizontally', icon: AlignHorizontalSpaceAround, needsMultiSelection: true },
+  { action: 'distributeV', label: 'Distribute vertically', icon: AlignVerticalSpaceAround, needsMultiSelection: true },
 ];
 
 interface ContextMenuProps {
   x: number;
   y: number;
   hasSelection: boolean;
+  selectionCount: number;
   onAction: (action: ContextMenuAction) => void;
   onClose: () => void;
 }
 
-const ContextMenu = ({ x, y, hasSelection, onAction, onClose }: ContextMenuProps) => {
+const ContextMenu = ({ x, y, hasSelection, selectionCount, onAction, onClose }: ContextMenuProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Clamp position to viewport
@@ -104,6 +134,7 @@ const ContextMenu = ({ x, y, hasSelection, onAction, onClose }: ContextMenuProps
   const visibleItems = MENU_ITEMS.filter((item) => {
     if (item === 'divider') return true;
     if (item.needsSelection && !hasSelection) return false;
+    if (item.needsMultiSelection && selectionCount < 2) return false;
     return true;
   });
 

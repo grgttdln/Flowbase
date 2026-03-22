@@ -1,6 +1,6 @@
 'use client';
 
-import { Undo2, Redo2, Download, Settings } from 'lucide-react';
+import { Undo2, Redo2, Download, Settings, Keyboard } from 'lucide-react';
 import FloatingPill from '../ui/FloatingPill';
 import IconButton from '../ui/IconButton';
 
@@ -11,9 +11,10 @@ interface ActionGroupProps {
   onRedo: () => void;
   onExport: () => void;
   onSettings: () => void;
+  onShortcuts: () => void;
 }
 
-const ActionGroup = ({ canUndo, canRedo, onUndo, onRedo, onExport, onSettings }: ActionGroupProps) => {
+const ActionGroup = ({ canUndo, canRedo, onUndo, onRedo, onExport, onSettings, onShortcuts }: ActionGroupProps) => {
   return (
     <FloatingPill className="flex items-center gap-0.5 p-1.5">
       <IconButton
@@ -32,6 +33,7 @@ const ActionGroup = ({ canUndo, canRedo, onUndo, onRedo, onExport, onSettings }:
       />
       <div className="mx-1 h-5 w-px bg-[#E5E5E5]" />
       <IconButton icon={Download} label="Export" onClick={onExport} />
+      <IconButton icon={Keyboard} label="Shortcuts" shortcut="?" onClick={onShortcuts} />
       <IconButton icon={Settings} label="Settings" onClick={onSettings} />
     </FloatingPill>
   );

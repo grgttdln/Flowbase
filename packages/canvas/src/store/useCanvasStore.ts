@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Element, ToolType, Viewport } from '@flowbase/shared';
 import { DEFAULT_VIEWPORT, generateId, DEFAULT_ELEMENT_PROPS, MAX_UNDO_STEPS } from '@flowbase/shared';
+import { getSelectionBounds } from '../utils/geometry';
 
 export interface CanvasState {
   // Elements
@@ -49,6 +50,16 @@ export interface CanvasState {
   // Grouping
   group: () => void;
   ungroup: () => void;
+
+  // Alignment & distribution
+  alignLeft: () => void;
+  alignCenterH: () => void;
+  alignRight: () => void;
+  alignTop: () => void;
+  alignCenterV: () => void;
+  alignBottom: () => void;
+  distributeH: () => void;
+  distributeV: () => void;
 
   // Snapping
   snapToGrid: boolean;
@@ -333,6 +344,135 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     set({
       elements: elements.map((el) =>
         el.groupId && groupIds.has(el.groupId) ? { ...el, groupId: undefined } : el,
+      ),
+    });
+  },
+
+  // Alignment & distribution
+  alignLeft: () => {
+    const { elements, selectedIds } = get();
+    const selected = elements.filter((el) => selectedIds.has(el.id));
+    if (selected.length < 2) return;
+    get().pushHistory();
+    const minX = Math.min(...selected.map((el) => el.x));
+    set({
+      elements: elements.map((el) =>
+        selectedIds.has(el.id) ? { ...el, x: minX } : el,
+      ),
+    });
+  },
+
+  alignCenterH: () => {
+    const { elements, selectedIds } = get();
+    const selected = elements.filter((el) => selectedIds.has(el.id));
+    if (selected.length < 2) return;
+    get().pushHistory();
+    const bounds = getSelectionBounds(selected)!;
+    const centerX = bounds.x + bounds.width / 2;
+    set({
+      elements: elements.map((el) =>
+        selectedIds.has(el.id) ? { ...el, x: centerX - el.width / 2 } : el,
+      ),
+    });
+  },
+
+  alignRight: () => {
+    const { elements, selectedIds } = get();
+    const selected = elements.filter((el) => selectedIds.has(el.id));
+    if (selected.length < 2) return;
+    get().pushHistory();
+    const maxRight = Math.max(...selected.map((el) => el.x + el.width));
+    set({
+      elements: elements.map((el) =>
+        selectedIds.has(el.id) ? { ...el, x: maxRight - el.width } : el,
+      ),
+    });
+  },
+
+  alignTop: () => {
+    const { elements, selectedIds } = get();
+    const selected = elements.filter((el) => selectedIds.has(el.id));
+    if (selected.length < 2) return;
+    get().pushHistory();
+    const minY = Math.min(...selected.map((el) => el.y));
+    set({
+      elements: elements.map((el) =>
+        selectedIds.has(el.id) ? { ...el, y: minY } : el,
+      ),
+    });
+  },
+
+  alignCenterV: () => {
+    const { elements, selectedIds } = get();
+    const selected = elements.filter((el) => selectedIds.has(el.id));
+    if (selected.length < 2) return;
+    get().pushHistory();
+    const bounds = getSelectionBounds(selected)!;
+    const centerY = bounds.y + bounds.height / 2;
+    set({
+      elements: elements.map((el) =>
+        selectedIds.has(el.id) ? { ...el, y: centerY - el.height / 2 } : el,
+      ),
+    });
+  },
+
+  alignBottom: () => {
+    const { elements, selectedIds } = get();
+    const selected = elements.filter((el) => selectedIds.has(el.id));
+    if (selected.length < 2) return;
+    get().pushHistory();
+    const maxBottom = Math.max(...selected.map((el) => el.y + el.height));
+    set({
+      elements: elements.map((el) =>
+        selectedIds.has(el.id) ? { ...el, y: maxBottom - el.height } : el,
+      ),
+    });
+  },
+
+  distributeH: () => {
+    const { elements, selectedIds } = get();
+    const selected = elements.filter((el) => selectedIds.has(el.id));
+    if (selected.length < 3) return;
+    get().pushHistory();
+    const sorted = [...selected].sort((a, b) => a.x - b.x);
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const totalWidth = sorted.reduce((sum, el) => sum + el.width, 0);
+    const totalGap = (last.x + last.width - first.x) - totalWidth;
+    const gap = totalGap / (sorted.length - 1);
+    let currentX = first.x + first.width + gap;
+    const updates = new Map<string, number>();
+    for (let i = 1; i < sorted.length - 1; i++) {
+      updates.set(sorted[i].id, currentX);
+      currentX += sorted[i].width + gap;
+    }
+    set({
+      elements: elements.map((el) =>
+        updates.has(el.id) ? { ...el, x: updates.get(el.id)! } : el,
+      ),
+    });
+  },
+
+  distributeV: () => {
+    const { elements, selectedIds } = get();
+    const selected = elements.filter((el) => selectedIds.has(el.id));
+    if (selected.length < 3) return;
+    get().pushHistory();
+    const sorted = [...selected].sort((a, b) => a.y - b.y);
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const totalHeight = sorted.reduce((sum, el) => sum + el.height, 0);
+    const totalGap = (last.y + last.height - first.y) - totalHeight;
+    const gap = totalGap / (sorted.length - 1);
+    let currentY = first.y + first.height + gap;
+    const updates = new Map<string, number>();
+    for (let i = 1; i < sorted.length - 1; i++) {
+      updates.set(sorted[i].id, currentY);
+      currentY += sorted[i].height + gap;
+    }
+    set({
+      elements: elements.map((el) =>
+        updates.has(el.id) ? { ...el, y: updates.get(el.id)! } : el,
       ),
     });
   },

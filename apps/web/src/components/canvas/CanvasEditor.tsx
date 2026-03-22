@@ -15,7 +15,10 @@ import ExportDialog from '../dialogs/ExportDialog';
 import ContextMenu, { type ContextMenuAction } from './ContextMenu';
 import AIResponsePopover from '../ai/AIResponsePopover';
 import SettingsPanel from '../dialogs/SettingsPanel';
+import ShortcutsPanel from '../dialogs/ShortcutsPanel';
 import PropertiesSidebar from '../properties/PropertiesSidebar';
+import AlignmentToolbar from '../toolbar/AlignmentToolbar';
+import GenerateDialog from '../ai/GenerateDialog';
 
 interface AIPopoverInstance {
   id: string;
@@ -39,6 +42,8 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [exportOpen, setExportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [generateOpen, setGenerateOpen] = useState(false);
   const [settingsHint, setSettingsHint] = useState<string | undefined>();
   const [aiPopovers, setAiPopovers] = useState<AIPopoverInstance[]>([]);
   const [activePopoverId, setActivePopoverId] = useState<string | null>(null);
@@ -61,6 +66,14 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
     ungroup,
     bringForward,
     sendBackward,
+    alignLeft,
+    alignCenterH,
+    alignRight,
+    alignTop,
+    alignCenterV,
+    alignBottom,
+    distributeH,
+    distributeV,
   } = useCanvasStore();
 
   const { status: saveStatus, flushSave } = useAutoSave(projectId, stageRef);
@@ -91,14 +104,33 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
+
+      // Alignment shortcuts: Cmd/Ctrl+Shift+key
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey) {
+        const key = e.key.toLowerCase();
+        if (key === 'l') { e.preventDefault(); alignLeft(); return; }
+        if (key === 'c') { e.preventDefault(); alignCenterH(); return; }
+        if (key === 'r') { e.preventDefault(); alignRight(); return; }
+        if (key === 't') { e.preventDefault(); alignTop(); return; }
+        if (key === 'm') { e.preventDefault(); alignCenterV(); return; }
+        if (key === 'b') { e.preventDefault(); alignBottom(); return; }
+        if (key === 'h') { e.preventDefault(); distributeH(); return; }
+        if (key === 'v') { e.preventDefault(); distributeV(); return; }
+      }
+
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.key === '?') {
+        setShortcutsOpen((prev) => !prev);
+        return;
+      }
 
       const tool = SHORTCUTS[e.key.toLowerCase()];
       if (tool) setTool(tool);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setTool]);
+  }, [setTool, alignLeft, alignCenterH, alignRight, alignTop, alignCenterV, alignBottom, distributeH, distributeV]);
 
   const handleContextMenu = useCallback((e: { x: number; y: number; elementId?: string }) => {
     setContextMenu(e);
@@ -271,6 +303,33 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
       case 'sendBackward':
         sendBackward();
         break;
+      case 'alignLeft':
+        alignLeft();
+        break;
+      case 'alignCenterH':
+        alignCenterH();
+        break;
+      case 'alignRight':
+        alignRight();
+        break;
+      case 'alignTop':
+        alignTop();
+        break;
+      case 'alignCenterV':
+        alignCenterV();
+        break;
+      case 'alignBottom':
+        alignBottom();
+        break;
+      case 'distributeH':
+        distributeH();
+        break;
+      case 'distributeV':
+        distributeV();
+        break;
+      case 'generate':
+        setGenerateOpen(true);
+        break;
       case 'explain':
       case 'suggest':
       case 'summarize':
@@ -279,7 +338,7 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
         }
         break;
     }
-  }, [copy, paste, deleteElements, selectedIds, group, ungroup, bringForward, sendBackward, contextMenu, runAIAction]);
+  }, [copy, paste, deleteElements, selectedIds, group, ungroup, bringForward, sendBackward, alignLeft, alignCenterH, alignRight, alignTop, alignCenterV, alignBottom, distributeH, distributeV, contextMenu, runAIAction]);
 
   if (dimensions.width === 0) return null;
 
@@ -311,6 +370,7 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
           onUndo={undo}
           onRedo={redo}
           onExport={() => setExportOpen(true)}
+          onShortcuts={() => setShortcutsOpen(true)}
           onSettings={() => {
             setSettingsHint(undefined);
             setSettingsOpen(true);
@@ -335,6 +395,9 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
       {/* Properties sidebar */}
       <PropertiesSidebar />
 
+      {/* Alignment toolbar — above multi-selection */}
+      <AlignmentToolbar />
+
       {/* Export dialog */}
       {exportOpen && (
         <ExportDialog
@@ -350,6 +413,7 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
           x={contextMenu.x}
           y={contextMenu.y}
           hasSelection={selectedIds.size > 0}
+          selectionCount={selectedIds.size}
           onAction={handleContextMenuAction}
           onClose={() => setContextMenu(null)}
         />
@@ -376,11 +440,27 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
         />
       ))}
 
+      {/* Generate Diagram dialog */}
+      <GenerateDialog
+        open={generateOpen}
+        onClose={() => setGenerateOpen(false)}
+        onNeedsApiKey={() => {
+          setSettingsHint('Enter your OpenRouter API key to use AI features.');
+          setSettingsOpen(true);
+        }}
+      />
+
       {/* Settings Panel */}
       <SettingsPanel
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         hint={settingsHint}
+      />
+
+      {/* Shortcuts Panel */}
+      <ShortcutsPanel
+        open={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
       />
     </div>
   );
