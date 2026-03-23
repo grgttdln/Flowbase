@@ -19,6 +19,9 @@ import ShortcutsPanel from '../dialogs/ShortcutsPanel';
 import PropertiesSidebar from '../properties/PropertiesSidebar';
 import AlignmentToolbar from '../toolbar/AlignmentToolbar';
 import GenerateDialog from '../ai/GenerateDialog';
+import { parseLayoutResponse } from '@flowbase/ai';
+import type { LayoutPreviewPosition } from '@flowbase/canvas';
+import LayoutPreview from '../ai/LayoutPreview';
 
 interface AIPopoverInstance {
   id: string;
@@ -48,6 +51,10 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
   const [aiPopovers, setAiPopovers] = useState<AIPopoverInstance[]>([]);
   const [activePopoverId, setActivePopoverId] = useState<string | null>(null);
   const abortControllers = useRef<Map<string, AbortController>>(new Map());
+  const [layoutPreview, setLayoutPreview] = useState<LayoutPreviewPosition[] | null>(null);
+  const [isLayoutLoading, setIsLayoutLoading] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const layoutAbortController = useRef<AbortController | null>(null);
   const {
     activeTool,
     setTool,
@@ -74,11 +81,30 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
     alignBottom,
     distributeH,
     distributeV,
+    pushHistory,
+    setElements,
   } = useCanvasStore();
 
   const { status: saveStatus, flushSave } = useAutoSave(projectId, stageRef);
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; elementId?: string } | null>(null);
+
+  // Cancel layout loading on Escape
+  useEffect(() => {
+    if (!isLayoutLoading) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (layoutAbortController.current) {
+          layoutAbortController.current.abort();
+          layoutAbortController.current = null;
+        }
+        setIsLayoutLoading(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLayoutLoading]);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -243,6 +269,147 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
     [selectedIds, streamToPopover],
   );
 
+  const runLayoutAction = useCallback(async () => {
+    setLayoutPreview(null);
+    setIsLayoutLoading(true);
+
+    const { apiKey, model } = getAISettings();
+    if (!apiKey) {
+      setSettingsHint('Enter your OpenRouter API key to use AI features.');
+      setSettingsOpen(true);
+      setIsLayoutLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    layoutAbortController.current = controller;
+
+    try {
+      const scene = { version: 1, elements };
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ action: 'layout', scene, model }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `Request failed (${response.status})`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      const decoder = new TextDecoder();
+      let sseBuffer = '';
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const data = trimmed.slice(6);
+          if (data === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(data);
+            if (typeof parsed === 'string') {
+              fullText += parsed;
+            } else if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+          } catch (e) {
+            if (e instanceof Error && e.message !== 'Unexpected') throw e;
+          }
+        }
+      }
+
+      const existingIds = elements.map((el) => el.id);
+      const result = parseLayoutResponse(fullText, existingIds);
+
+      if (result.positions.length === 0) {
+        throw new Error('AI could not generate layout suggestions. Try again.');
+      }
+
+      setLayoutPreview(result.positions);
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') return;
+      const errorMsg = e instanceof Error ? e.message : 'Layout failed';
+      alert(errorMsg);
+    } finally {
+      setIsLayoutLoading(false);
+      layoutAbortController.current = null;
+    }
+  }, [elements]);
+
+  const handleApplyLayout = useCallback(() => {
+    if (!layoutPreview) return;
+
+    const posMap = new Map(layoutPreview.map((p) => [p.id, { x: p.x, y: p.y }]));
+
+    const startPositions = new Map<string, { x: number; y: number }>();
+    for (const el of elements) {
+      if (posMap.has(el.id)) {
+        startPositions.set(el.id, { x: el.x, y: el.y });
+      }
+    }
+
+    setLayoutPreview(null);
+    pushHistory();
+    setIsAnimating(true);
+
+    const duration = 300;
+    const startTime = performance.now();
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = easeOut(progress);
+
+      const updated = elements.map((el) => {
+        const start = startPositions.get(el.id);
+        const target = posMap.get(el.id);
+        if (!start || !target) return el;
+
+        return {
+          ...el,
+          x: start.x + (target.x - start.x) * eased,
+          y: start.y + (target.y - start.y) * eased,
+        };
+      });
+
+      setElements(updated);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setIsAnimating(false);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [layoutPreview, elements, pushHistory, setElements]);
+
+  const handleCancelLayout = useCallback(() => {
+    setLayoutPreview(null);
+    if (layoutAbortController.current) {
+      layoutAbortController.current.abort();
+      layoutAbortController.current = null;
+    }
+  }, []);
+
   const handleClosePopover = useCallback((id: string) => {
     const controller = abortControllers.current.get(id);
     if (controller) {
@@ -330,6 +497,9 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
       case 'generate':
         setGenerateOpen(true);
         break;
+      case 'layout':
+        runLayoutAction();
+        break;
       case 'explain':
       case 'suggest':
       case 'summarize':
@@ -338,18 +508,19 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
         }
         break;
     }
-  }, [copy, paste, deleteElements, selectedIds, group, ungroup, bringForward, sendBackward, alignLeft, alignCenterH, alignRight, alignTop, alignCenterV, alignBottom, distributeH, distributeV, contextMenu, runAIAction]);
+  }, [copy, paste, deleteElements, selectedIds, group, ungroup, bringForward, sendBackward, alignLeft, alignCenterH, alignRight, alignTop, alignCenterV, alignBottom, distributeH, distributeV, contextMenu, runAIAction, runLayoutAction]);
 
   if (dimensions.width === 0) return null;
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-white">
+    <div className="relative h-screen w-screen overflow-hidden bg-white" style={isAnimating ? { pointerEvents: 'none' } : undefined}>
       {/* Canvas */}
       <FlowbaseCanvas
         width={dimensions.width}
         height={dimensions.height}
         stageRef={stageRef}
         onContextMenu={handleContextMenu}
+        layoutPreview={layoutPreview}
       />
 
       {/* Logo — top left */}
@@ -414,6 +585,7 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
           y={contextMenu.y}
           hasSelection={selectedIds.size > 0}
           selectionCount={selectedIds.size}
+          elementCount={elements.length}
           onAction={handleContextMenuAction}
           onClose={() => setContextMenu(null)}
         />
@@ -439,6 +611,19 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
           onActivate={handleActivatePopover}
         />
       ))}
+
+      {/* Layout loading indicator */}
+      {isLayoutLoading && (
+        <div className="absolute bottom-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-white px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)]">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#007AFF] border-t-transparent" />
+          <span className="text-[13px] font-medium text-[#666666]">Analyzing layout…</span>
+        </div>
+      )}
+
+      {/* Layout preview controls */}
+      {layoutPreview && (
+        <LayoutPreview onApply={handleApplyLayout} onCancel={handleCancelLayout} />
+      )}
 
       {/* Generate Diagram dialog */}
       <GenerateDialog
