@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
-import { streamChat, serializeElements, buildMessages, AIError } from '@flowbase/ai';
+import { streamChat, serializeElements, serializeForLayout, buildMessages, AIError } from '@flowbase/ai';
 import type { AIActionType, Element } from '@flowbase/shared';
 
-const VALID_ACTIONS: AIActionType[] = ['explain', 'suggest', 'summarize', 'generate'];
+const VALID_ACTIONS: AIActionType[] = ['explain', 'suggest', 'summarize', 'generate', 'layout'];
 
 export async function POST(req: NextRequest) {
   // Auth
@@ -33,6 +33,15 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: 'Prompt required for generate action' }, { status: 400 });
     }
     messages = buildMessages('generate', prompt.trim());
+  } else if (action === 'layout') {
+    if (!scene?.elements || !Array.isArray(scene.elements)) {
+      return Response.json({ error: 'Invalid scene' }, { status: 400 });
+    }
+    if (scene.elements.length < 2) {
+      return Response.json({ error: 'Need at least 2 elements for layout' }, { status: 400 });
+    }
+    const serialized = serializeForLayout(scene.elements);
+    messages = buildMessages('layout', serialized);
   } else {
     if (!scene?.elements || !Array.isArray(scene.elements)) {
       return Response.json({ error: 'Invalid scene' }, { status: 400 });
