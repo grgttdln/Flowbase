@@ -17,7 +17,7 @@ const LayoutPreview = ({ onApply, onCancel }: LayoutPreviewProps) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onApply, onCancel]);
+  }, [onCancel]);
 
   return (
     <div
