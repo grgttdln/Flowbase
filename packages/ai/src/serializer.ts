@@ -64,3 +64,26 @@ export function serializeElements(elements: Element[]): string {
 
   return result;
 }
+
+export function serializeForLayout(elements: Element[]): string {
+  const truncated = elements.length > MAX_ELEMENTS;
+  const subset = truncated ? elements.slice(0, MAX_ELEMENTS) : elements;
+
+  // Exclude bound arrows — their positions are determined by the binding system
+  const layoutElements = subset.filter(
+    (el) => !(el.startBinding || el.endBinding),
+  );
+
+  const data = layoutElements.map((el) => ({
+    id: el.id,
+    type: el.type,
+    x: Math.round(el.x),
+    y: Math.round(el.y),
+    width: Math.round(el.width),
+    height: Math.round(el.height),
+    text: el.text ?? null,
+    groupId: el.groupId ?? null,
+  }));
+
+  return JSON.stringify({ elements: data });
+}
