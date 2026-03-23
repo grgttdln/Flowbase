@@ -44,7 +44,8 @@ export type ContextMenuAction =
   | 'explain'
   | 'suggest'
   | 'summarize'
-  | 'generate';
+  | 'generate'
+  | 'layout';
 
 interface MenuItem {
   action: ContextMenuAction;
@@ -54,6 +55,7 @@ interface MenuItem {
   isAI?: boolean;
   needsSelection?: boolean;
   needsMultiSelection?: boolean;
+  needsMinElements?: number;
 }
 
 const MENU_ITEMS: (MenuItem | 'divider')[] = [
@@ -61,6 +63,7 @@ const MENU_ITEMS: (MenuItem | 'divider')[] = [
   { action: 'explain', label: 'Explain', icon: MessageSquare, isAI: true, needsSelection: true },
   { action: 'suggest', label: 'Suggest improvements', icon: Lightbulb, isAI: true, needsSelection: true },
   { action: 'summarize', label: 'Summarize', icon: FileText, isAI: true },
+  { action: 'layout', label: 'Auto-Layout', icon: Sparkles, isAI: true, needsMinElements: 2 },
   'divider',
   { action: 'copy', label: 'Copy', icon: Copy, shortcut: '⌘C', needsSelection: true },
   { action: 'paste', label: 'Paste', icon: ClipboardPaste, shortcut: '⌘V' },
@@ -87,11 +90,12 @@ interface ContextMenuProps {
   y: number;
   hasSelection: boolean;
   selectionCount: number;
+  elementCount?: number;
   onAction: (action: ContextMenuAction) => void;
   onClose: () => void;
 }
 
-const ContextMenu = ({ x, y, hasSelection, selectionCount, onAction, onClose }: ContextMenuProps) => {
+const ContextMenu = ({ x, y, hasSelection, selectionCount, elementCount = 0, onAction, onClose }: ContextMenuProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Clamp position to viewport
@@ -135,6 +139,7 @@ const ContextMenu = ({ x, y, hasSelection, selectionCount, onAction, onClose }: 
     if (item === 'divider') return true;
     if (item.needsSelection && !hasSelection) return false;
     if (item.needsMultiSelection && selectionCount < 2) return false;
+    if (item.needsMinElements && elementCount < item.needsMinElements) return false;
     return true;
   });
 
