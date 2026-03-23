@@ -1,5 +1,6 @@
 // Components
 export { default as FlowbaseCanvas } from './components/FlowbaseCanvas';
+export type { LayoutPreviewPosition } from './components/FlowbaseCanvas';
 
 // Store
 export { useCanvasStore } from './store/useCanvasStore';
