@@ -127,3 +127,73 @@ export function parseGeneratedElements(text: string): ParseResult {
 
   return { elements, warnings };
 }
+
+export interface LayoutPosition {
+  id: string;
+  x: number;
+  y: number;
+}
+
+export interface LayoutParseResult {
+  positions: LayoutPosition[];
+  warnings: string[];
+}
+
+function extractLayoutJSON(text: string): string {
+  const trimmed = text.trim();
+  if (trimmed.startsWith('{')) return trimmed;
+
+  const codeBlockMatch = trimmed.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if (codeBlockMatch) return codeBlockMatch[1].trim();
+
+  const jsonMatch = trimmed.match(/\{[\s\S]*"layout"[\s\S]*\}/);
+  if (jsonMatch) return jsonMatch[0];
+
+  return trimmed;
+}
+
+export function parseLayoutResponse(text: string, existingIds: string[]): LayoutParseResult {
+  const warnings: string[] = [];
+  const idSet = new Set(existingIds);
+
+  const jsonStr = extractLayoutJSON(text);
+  let parsed: { layout?: unknown[] };
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch {
+    throw new Error('Could not parse AI layout response as JSON. Try again.');
+  }
+
+  if (!parsed.layout || !Array.isArray(parsed.layout)) {
+    throw new Error('AI response missing "layout" array. Try again.');
+  }
+
+  const positions: LayoutPosition[] = [];
+
+  for (let i = 0; i < parsed.layout.length; i++) {
+    const raw = parsed.layout[i] as Record<string, unknown>;
+
+    if (typeof raw.id !== 'string') {
+      warnings.push(`Layout entry ${i}: missing or invalid id, skipping`);
+      continue;
+    }
+
+    if (!idSet.has(raw.id)) {
+      warnings.push(`Layout entry ${i}: id "${raw.id}" not found on canvas, skipping`);
+      continue;
+    }
+
+    if (typeof raw.x !== 'number' || typeof raw.y !== 'number') {
+      warnings.push(`Layout entry ${i}: missing x or y coordinate, skipping`);
+      continue;
+    }
+
+    positions.push({
+      id: raw.id,
+      x: clamp(raw.x, -5000, 10000),
+      y: clamp(raw.y, -5000, 10000),
+    });
+  }
+
+  return { positions, warnings };
+}
