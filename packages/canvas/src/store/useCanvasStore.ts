@@ -10,6 +10,7 @@ export interface CanvasState {
   updateElement: (id: string, updates: Partial<Element>) => void;
   deleteElements: (ids: string[]) => void;
   setElements: (elements: Element[]) => void;
+  batchUpdateElements: (updates: Map<string, Partial<Element>>) => void;
 
   // History (undo/redo)
   history: Element[][];
@@ -125,6 +126,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   setElements: (elements) => set({ elements }),
+
+  batchUpdateElements: (updates) => {
+    set({
+      elements: get().elements.map((el) => {
+        const u = updates.get(el.id);
+        return u ? { ...el, ...u } : el;
+      }),
+    });
+  },
 
   // History (snapshot-based undo/redo)
   history: [[]],
