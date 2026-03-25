@@ -33,34 +33,33 @@ interface FlowbaseCanvasProps {
 const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMenu, layoutPreview }: FlowbaseCanvasProps) => {
   const internalStageRef = useRef<Konva.Stage>(null);
   const stageRef = externalStageRef ?? internalStageRef;
-  const {
-    elements,
-    selectedIds,
-    activeTool,
-    viewport,
-    drawingElement,
-    snapToGrid: snapGridEnabled,
-    snapToElements: snapElementsEnabled,
-    gridSize,
-    select,
-    toggleSelection,
-    deselect,
-    updateElement,
-    deleteElements,
-    copy,
-    paste,
-    undo,
-    redo,
-    group,
-    ungroup,
-    bringForward,
-    sendBackward,
-    bringToFront,
-    sendToBack,
-    pushHistory,
-    setViewport,
-    zoomTo,
-  } = useCanvasStore();
+  const elements = useCanvasStore((s) => s.elements);
+  const selectedIds = useCanvasStore((s) => s.selectedIds);
+  const activeTool = useCanvasStore((s) => s.activeTool);
+  const viewport = useCanvasStore((s) => s.viewport);
+  const drawingElement = useCanvasStore((s) => s.drawingElement);
+  const snapGridEnabled = useCanvasStore((s) => s.snapToGrid);
+  const snapElementsEnabled = useCanvasStore((s) => s.snapToElements);
+  const gridSize = useCanvasStore((s) => s.gridSize);
+  const select = useCanvasStore((s) => s.select);
+  const toggleSelection = useCanvasStore((s) => s.toggleSelection);
+  const deselect = useCanvasStore((s) => s.deselect);
+  const updateElement = useCanvasStore((s) => s.updateElement);
+  const batchUpdateElements = useCanvasStore((s) => s.batchUpdateElements);
+  const deleteElements = useCanvasStore((s) => s.deleteElements);
+  const copy = useCanvasStore((s) => s.copy);
+  const paste = useCanvasStore((s) => s.paste);
+  const undo = useCanvasStore((s) => s.undo);
+  const redo = useCanvasStore((s) => s.redo);
+  const group = useCanvasStore((s) => s.group);
+  const ungroup = useCanvasStore((s) => s.ungroup);
+  const bringForward = useCanvasStore((s) => s.bringForward);
+  const sendBackward = useCanvasStore((s) => s.sendBackward);
+  const bringToFront = useCanvasStore((s) => s.bringToFront);
+  const sendToBack = useCanvasStore((s) => s.sendToBack);
+  const pushHistory = useCanvasStore((s) => s.pushHistory);
+  const setViewport = useCanvasStore((s) => s.setViewport);
+  const zoomTo = useCanvasStore((s) => s.zoomTo);
 
   const { onMouseDown, onMouseMove, onMouseUp, getCursor, getDrawingEndpoint, getSnappedAnchor } = useToolHandlers();
 
@@ -409,25 +408,28 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
   const handleTextDblClick = useCallback((id: string) => {
     const element = elements.find((el) => el.id === id);
-    if (!element || element.type !== 'text') return;
+    if (!element) return;
+    const editableTypes = ['text', 'rectangle', 'ellipse', 'diamond'];
+    if (!editableTypes.includes(element.type)) return;
 
     setEditingTextId(id);
 
     const stage = stageRef.current;
     if (!stage) return;
 
-    const textNode = stage.findOne(`#${id}`);
-    if (!textNode) return;
+    const node = stage.findOne(`#${id}`);
+    if (!node) return;
 
-    const textPosition = textNode.getClientRect();
+    const nodeRect = node.getClientRect();
     const input = document.createElement('textarea');
     input.value = element.text ?? '';
     input.style.position = 'absolute';
-    input.style.top = `${textPosition.y}px`;
-    input.style.left = `${textPosition.x}px`;
-    input.style.width = `${Math.max(textPosition.width, 100)}px`;
-    input.style.height = `${Math.max(textPosition.height, 30)}px`;
-    input.style.fontSize = `${(element.fontSize ?? 16) * viewport.zoom}px`;
+    input.style.top = `${nodeRect.y}px`;
+    input.style.left = `${nodeRect.x}px`;
+    input.style.width = `${Math.max(nodeRect.width, 100)}px`;
+    input.style.height = `${Math.max(nodeRect.height, 30)}px`;
+    input.style.fontSize = `${(element.fontSize ?? (element.type === 'text' ? 16 : 14)) * viewport.zoom}px`;
+    input.style.textAlign = element.type === 'text' ? 'left' : 'center';
     input.style.border = '2px solid #007AFF';
     input.style.borderRadius = '4px';
     input.style.padding = '2px 4px';
