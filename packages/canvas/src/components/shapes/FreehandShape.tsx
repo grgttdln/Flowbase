@@ -1,5 +1,6 @@
 import { Line } from 'react-konva';
 import type { Element } from '@flowbase/shared';
+import React from 'react';
 
 interface FreehandShapeProps {
   element: Element;
@@ -10,7 +11,7 @@ interface FreehandShapeProps {
   onDragEnd: (id: string) => void;
 }
 
-const FreehandShape = ({ element, isSelected, onSelect, onDragStart, onDragMove, onDragEnd }: FreehandShapeProps) => {
+const FreehandShape = React.memo(({ element, isSelected, onSelect, onDragStart, onDragMove, onDragEnd }: FreehandShapeProps) => {
   return (
     <Line
       id={element.id}
@@ -33,6 +34,8 @@ const FreehandShape = ({ element, isSelected, onSelect, onDragStart, onDragMove,
       onDragEnd={() => onDragEnd(element.id)}
     />
   );
-};
+});
+
+FreehandShape.displayName = 'FreehandShape';
 
 export default FreehandShape;

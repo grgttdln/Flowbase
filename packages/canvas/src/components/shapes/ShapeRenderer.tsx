@@ -23,11 +23,11 @@ const ShapeRenderer = React.memo(({ element, isSelected, onSelect, onDragStart, 
 
   switch (element.type) {
     case 'rectangle':
-      return <RectShape {...commonProps} />;
+      return <RectShape {...commonProps} onDblClick={onTextDblClick} />;
     case 'ellipse':
-      return <EllipseShape {...commonProps} />;
+      return <EllipseShape {...commonProps} onDblClick={onTextDblClick} />;
     case 'diamond':
-      return <DiamondShape {...commonProps} />;
+      return <DiamondShape {...commonProps} onDblClick={onTextDblClick} />;
     case 'line':
       return <LineShape {...commonProps} />;
     case 'arrow':

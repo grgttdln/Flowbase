@@ -1,5 +1,6 @@
 import { Line } from 'react-konva';
 import type { Element } from '@flowbase/shared';
+import React from 'react';
 
 interface LineShapeProps {
   element: Element;
@@ -10,7 +11,7 @@ interface LineShapeProps {
   onDragEnd: (id: string) => void;
 }
 
-const LineShape = ({ element, isSelected, onSelect, onDragStart, onDragMove, onDragEnd }: LineShapeProps) => {
+const LineShape = React.memo(({ element, isSelected, onSelect, onDragStart, onDragMove, onDragEnd }: LineShapeProps) => {
   return (
     <Line
       id={element.id}
@@ -30,6 +31,8 @@ const LineShape = ({ element, isSelected, onSelect, onDragStart, onDragMove, onD
       onDragEnd={() => onDragEnd(element.id)}
     />
   );
-};
+});
+
+LineShape.displayName = 'LineShape';
 
 export default LineShape;

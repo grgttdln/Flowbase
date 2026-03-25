@@ -1,6 +1,7 @@
 import { Text } from 'react-konva';
 import type { Element } from '@flowbase/shared';
 import { DEFAULT_FONT_SIZE } from '@flowbase/shared';
+import React from 'react';
 
 interface TextShapeProps {
   element: Element;
@@ -12,7 +13,7 @@ interface TextShapeProps {
   onDblClick: (id: string) => void;
 }
 
-const TextShape = ({ element, isSelected, onSelect, onDragStart, onDragMove, onDragEnd, onDblClick }: TextShapeProps) => {
+const TextShape = React.memo(({ element, isSelected, onSelect, onDragStart, onDragMove, onDragEnd, onDblClick }: TextShapeProps) => {
   return (
     <Text
       id={element.id}
@@ -34,6 +35,8 @@ const TextShape = ({ element, isSelected, onSelect, onDragStart, onDragMove, onD
       onDragEnd={() => onDragEnd(element.id)}
     />
   );
-};
+});
+
+TextShape.displayName = 'TextShape';
 
 export default TextShape;

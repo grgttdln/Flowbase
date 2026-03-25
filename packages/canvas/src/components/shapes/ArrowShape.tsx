@@ -1,5 +1,6 @@
 import { Arrow } from 'react-konva';
 import type { Element } from '@flowbase/shared';
+import React from 'react';
 
 interface ArrowShapeProps {
   element: Element;
@@ -10,7 +11,7 @@ interface ArrowShapeProps {
   onDragEnd: (id: string) => void;
 }
 
-const ArrowShape = ({ element, isSelected, onSelect, onDragStart, onDragMove, onDragEnd }: ArrowShapeProps) => {
+const ArrowShape = React.memo(({ element, isSelected, onSelect, onDragStart, onDragMove, onDragEnd }: ArrowShapeProps) => {
   return (
     <Arrow
       id={element.id}
@@ -33,6 +34,8 @@ const ArrowShape = ({ element, isSelected, onSelect, onDragStart, onDragMove, on
       onDragEnd={() => onDragEnd(element.id)}
     />
   );
-};
+});
+
+ArrowShape.displayName = 'ArrowShape';
 
 export default ArrowShape;
