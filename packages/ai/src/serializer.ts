@@ -69,6 +69,17 @@ export function serializeForLayout(elements: Element[]): string {
   const truncated = elements.length > MAX_ELEMENTS;
   const subset = truncated ? elements.slice(0, MAX_ELEMENTS) : elements;
 
+  // Extract connections from bound arrows before filtering them out
+  const connections: Array<{ from: string; to: string }> = [];
+  for (const el of subset) {
+    if ((el.type === 'arrow' || el.type === 'line') && el.startBinding && el.endBinding) {
+      connections.push({
+        from: el.startBinding.elementId,
+        to: el.endBinding.elementId,
+      });
+    }
+  }
+
   // Exclude bound arrows — their positions are determined by the binding system
   const layoutElements = subset.filter(
     (el) => !(el.startBinding || el.endBinding),
@@ -85,5 +96,5 @@ export function serializeForLayout(elements: Element[]): string {
     groupId: el.groupId ?? null,
   }));
 
-  return JSON.stringify({ elements: data });
+  return JSON.stringify({ elements: data, connections });
 }
