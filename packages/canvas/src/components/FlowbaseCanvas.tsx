@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useState, useEffect } from 'react';
+import { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import { Stage, Layer, Rect, Ellipse, Line, Text, Group } from 'react-konva';
 import type Konva from 'konva';
 import type { Element } from '@flowbase/shared';
@@ -29,6 +29,11 @@ interface FlowbaseCanvasProps {
   onContextMenu?: (e: { x: number; y: number; elementId?: string }) => void;
   layoutPreview?: LayoutPreviewPosition[] | null;
 }
+
+const NOOP = () => {};
+const NOOP_SELECT = (_id: string, _shift: boolean) => {};
+const NOOP_DRAG_MOVE = (_id: string, _x: number, _y: number) => {};
+const NOOP_DRAG = (_id: string) => {};
 
 const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMenu, layoutPreview }: FlowbaseCanvasProps) => {
   const internalStageRef = useRef<Konva.Stage>(null);
@@ -61,6 +66,9 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
   const setViewport = useCanvasStore((s) => s.setViewport);
   const zoomTo = useCanvasStore((s) => s.zoomTo);
 
+  const elementsRef = useRef(elements);
+  elementsRef.current = elements;
+
   const { onMouseDown, onMouseMove, onMouseUp, getCursor, getDrawingEndpoint, getSnappedAnchor } = useToolHandlers();
 
   // Space+drag panning
@@ -73,6 +81,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
   // Track if drag has started (for history push)
   const dragStarted = useRef(false);
+  const prevDragSelectIds = useRef<string[]>([]);
 
   // Selection box (drag select)
   const [selectionBox, setSelectionBox] = useState<{
@@ -233,19 +242,23 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
       const h = Math.abs(pos.y - selectionBox.startY);
       setSelectionBox({ ...selectionBox, x, y, width: w, height: h });
 
-      // Select elements within box
-      const ids = elements
+      const ids = elementsRef.current
         .filter((el) => {
           return el.x >= x && el.y >= y && el.x + el.width <= x + w && el.y + el.height <= y + h;
         })
         .map((el) => el.id);
-      select(ids);
+
+      const prev = prevDragSelectIds.current;
+      if (ids.length !== prev.length || ids.some((id, i) => id !== prev[i])) {
+        prevDragSelectIds.current = ids;
+        select(ids);
+      }
       return;
     }
 
     const pos = getCanvasPos(e);
     onMouseMove(pos.x, pos.y);
-  }, [isPanning, selectionBox, activeTool, getCanvasPos, onMouseMove, setViewport, elements, select]);
+  }, [isPanning, selectionBox, activeTool, getCanvasPos, onMouseMove, setViewport, select]);
 
   const handleStageMouseUp = useCallback(() => {
     if (isPanning) {
@@ -263,6 +276,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
     if (selectionBox) {
       setSelectionBox(null);
+      prevDragSelectIds.current = [];
       return;
     }
 
@@ -325,16 +339,15 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
     if (shiftKey) {
       toggleSelection(id);
     } else {
-      // Also select grouped elements
-      const el = elements.find((e) => e.id === id);
+      const el = elementsRef.current.find((e) => e.id === id);
       if (el?.groupId) {
-        const groupIds = elements.filter((e) => e.groupId === el.groupId).map((e) => e.id);
+        const groupIds = elementsRef.current.filter((e) => e.groupId === el.groupId).map((e) => e.id);
         select(groupIds);
       } else {
         select([id]);
       }
     }
-  }, [activeTool, select, toggleSelection, elements]);
+  }, [activeTool, select, toggleSelection]);
 
   const handleDragStart = useCallback((id: string) => {
     if (!dragStarted.current) {
@@ -342,21 +355,21 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
       dragStarted.current = true;
     }
     if (!selectedIds.has(id)) {
-      const el = elements.find((e) => e.id === id);
+      const el = elementsRef.current.find((e) => e.id === id);
       if (el?.groupId) {
-        const groupIds = elements.filter((e) => e.groupId === el.groupId).map((e) => e.id);
+        const groupIds = elementsRef.current.filter((e) => e.groupId === el.groupId).map((e) => e.id);
         select(groupIds);
       } else {
         select([id]);
       }
     }
-  }, [selectedIds, select, elements, pushHistory]);
+  }, [selectedIds, select, pushHistory]);
 
   const handleDragMove = useCallback((id: string, x: number, y: number) => {
+    const elements = elementsRef.current;
     const element = elements.find((el) => el.id === id);
     if (!element) return;
 
-    // Apply snapping
     const result = snapPosition(
       x, y, element.width, element.height,
       elements, id,
@@ -364,7 +377,9 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
     );
 
     setActiveGuides(result.guides);
-    updateElement(id, { x: result.x, y: result.y });
+
+    const updates = new Map<string, Partial<Element>>();
+    updates.set(id, { x: result.x, y: result.y });
 
     // Move grouped elements together
     if (element.groupId) {
@@ -372,34 +387,33 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
       const dy = result.y - element.y;
       elements
         .filter((el) => el.groupId === element.groupId && el.id !== id)
-        .forEach((el) => updateElement(el.id, { x: el.x + dx, y: el.y + dy }));
+        .forEach((el) => updates.set(el.id, { x: el.x + dx, y: el.y + dy }));
     }
 
-    // Update all arrows bound to this element (and grouped elements)
+    // Update all arrows bound to moved elements
     const movedIds = new Set([id]);
     if (element.groupId) {
       elements.filter((el) => el.groupId === element.groupId).forEach((el) => movedIds.add(el.id));
     }
+
     // Build updated elements list with new positions for recalculation
     const updatedElements = elements.map((el) => {
-      if (el.id === id) return { ...el, x: result.x, y: result.y };
-      if (element.groupId && el.groupId === element.groupId && el.id !== id) {
-        const ddx = result.x - element.x;
-        const ddy = result.y - element.y;
-        return { ...el, x: el.x + ddx, y: el.y + ddy };
-      }
-      return el;
+      const u = updates.get(el.id);
+      return u ? { ...el, ...u } : el;
     });
+
     for (const el of elements) {
       if (el.type !== 'line' && el.type !== 'arrow') continue;
       const startBound = el.startBinding && movedIds.has(el.startBinding.elementId);
       const endBound = el.endBinding && movedIds.has(el.endBinding.elementId);
       if (startBound || endBound) {
-        const updates = recalcBoundArrow(el, updatedElements);
-        if (updates) updateElement(el.id, updates);
+        const arrowUpdates = recalcBoundArrow(el, updatedElements);
+        if (arrowUpdates) updates.set(el.id, { ...updates.get(el.id), ...arrowUpdates });
       }
     }
-  }, [elements, updateElement, snapGridEnabled, snapElementsEnabled, gridSize]);
+
+    batchUpdateElements(updates);
+  }, [snapGridEnabled, snapElementsEnabled, gridSize, batchUpdateElements]);
 
   const handleDragEnd = useCallback(() => {
     setActiveGuides([]);
@@ -407,7 +421,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
   }, []);
 
   const handleTextDblClick = useCallback((id: string) => {
-    const element = elements.find((el) => el.id === id);
+    const element = elementsRef.current.find((el) => el.id === id);
     if (!element) return;
     const editableTypes = ['text', 'rectangle', 'ellipse', 'diamond'];
     if (!editableTypes.includes(element.type)) return;
@@ -461,21 +475,22 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
         input.blur();
       }
     });
-  }, [elements, viewport.zoom, updateElement, pushHistory]);
+  }, [viewport.zoom, updateElement, pushHistory]);
 
   // Arrow endpoint drag handlers
   const handleEndpointDragStart = useCallback((elementId: string, pointIndex: number) => {
     pushHistory();
-    const el = elements.find((e) => e.id === elementId);
+    const el = elementsRef.current.find((e) => e.id === elementId);
     if (!el) return;
     const pts = el.points ?? [0, 0, el.width, el.height];
     const absX = el.x + (pts[pointIndex * 2] ?? 0);
     const absY = el.y + (pts[pointIndex * 2 + 1] ?? 0);
     setDraggingEndpoint({ elementId, pointIndex, x: absX, y: absY });
     endpointAnchor.current = null;
-  }, [elements, pushHistory]);
+  }, [pushHistory]);
 
   const handleEndpointDragMove = useCallback((elementId: string, pointIndex: number, x: number, y: number) => {
+    const elements = elementsRef.current;
     const el = elements.find((e) => e.id === elementId);
     if (!el) return;
 
@@ -484,7 +499,6 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
     const isStart = pointIndex === 0;
     const isEnd = pointIndex === totalPoints - 1;
 
-    // Snap endpoints to shape anchors
     let snapX = x;
     let snapY = y;
     if (isStart || isEnd) {
@@ -499,11 +513,9 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
     setDraggingEndpoint({ elementId, pointIndex, x: snapX, y: snapY });
 
     if (isStart) {
-      // Moving start point: shift the element origin, adjust all other points
       const dx = snapX - el.x;
       const dy = snapY - el.y;
       const newPts = [...pts];
-      // Adjust all points except start to stay in same absolute position
       for (let i = 2; i < newPts.length; i += 2) {
         newPts[i] -= dx;
         newPts[i + 1] -= dy;
@@ -512,16 +524,15 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
       newPts[1] = 0;
       updateElement(elementId, { x: snapX, y: snapY, points: newPts });
     } else {
-      // Moving midpoint or end: just update the relative point
       const newPts = [...pts];
       newPts[pointIndex * 2] = snapX - el.x;
       newPts[pointIndex * 2 + 1] = snapY - el.y;
       updateElement(elementId, { points: newPts });
     }
-  }, [elements, updateElement]);
+  }, [updateElement]);
 
   const handleEndpointDragEnd = useCallback((elementId: string, pointIndex: number) => {
-    const el = elements.find((e) => e.id === elementId);
+    const el = elementsRef.current.find((e) => e.id === elementId);
     if (!el) return;
 
     const pts = el.points ?? [0, 0, el.width, el.height];
@@ -529,7 +540,6 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
     const isStart = pointIndex === 0;
     const isEnd = pointIndex === totalPoints - 1;
 
-    // Update bindings for endpoints
     if (isStart || isEnd) {
       const anchor = endpointAnchor.current;
       const bindingUpdate: Partial<Element> = {};
@@ -547,21 +557,20 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
     setDraggingEndpoint(null);
     endpointAnchor.current = null;
-  }, [elements, updateElement]);
+  }, [updateElement]);
 
   const handleSegmentDblClick = useCallback((elementId: string, segmentIndex: number, x: number, y: number) => {
-    const el = elements.find((e) => e.id === elementId);
+    const el = elementsRef.current.find((e) => e.id === elementId);
     if (!el) return;
 
     pushHistory();
     const pts = el.points ? [...el.points] : [0, 0, el.width, el.height];
-    // Insert a new point after segmentIndex (relative to element position)
     const insertAt = (segmentIndex + 1) * 2;
     const relX = x - el.x;
     const relY = y - el.y;
     pts.splice(insertAt, 0, relX, relY);
     updateElement(elementId, { points: pts, autoRoute: false });
-  }, [elements, updateElement, pushHistory]);
+  }, [updateElement, pushHistory]);
 
   // Context menu
   const handleContextMenu = useCallback((e: Konva.KonvaEventObject<PointerEvent>) => {
@@ -585,7 +594,10 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
   const cursor = isSpaceDown || isPanning ? (isPanning ? 'grabbing' : 'grab') : getCursor();
 
-  const sortedElements = [...elements].sort((a, b) => a.zIndex - b.zIndex);
+  const sortedElements = useMemo(
+    () => [...elements].sort((a, b) => a.zIndex - b.zIndex),
+    [elements]
+  );
 
   return (
     <div style={{ cursor, width, height }}>
@@ -629,11 +641,11 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
             <ShapeRenderer
               element={drawingElement}
               isSelected={false}
-              onSelect={() => {}}
-              onDragStart={() => {}}
-              onDragMove={() => {}}
-              onDragEnd={() => {}}
-              onTextDblClick={() => {}}
+              onSelect={NOOP_SELECT}
+              onDragStart={NOOP_DRAG}
+              onDragMove={NOOP_DRAG_MOVE}
+              onDragEnd={NOOP}
+              onTextDblClick={NOOP_DRAG}
             />
           )}
           {(activeTool === 'line' || activeTool === 'arrow') && (() => {
