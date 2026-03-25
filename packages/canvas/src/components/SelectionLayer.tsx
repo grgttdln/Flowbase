@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useMemo } from 'react';
 import { Transformer, Rect } from 'react-konva';
 import type Konva from 'konva';
 import { useCanvasStore } from '../store/useCanvasStore';
@@ -9,7 +9,14 @@ interface SelectionLayerProps {
 
 const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
   const transformerRef = useRef<Konva.Transformer>(null);
-  const { selectedIds, elements, updateElement } = useCanvasStore();
+  const selectedIds = useCanvasStore((s) => s.selectedIds);
+  const elements = useCanvasStore((s) => s.elements);
+  const updateElement = useCanvasStore((s) => s.updateElement);
+
+  const lineArrowIds = useMemo(
+    () => new Set(elements.filter((el) => el.type === 'line' || el.type === 'arrow').map((el) => el.id)),
+    [elements]
+  );
 
   useEffect(() => {
     const transformer = transformerRef.current;
@@ -19,10 +26,6 @@ const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
     const layer = transformer.getLayer();
     if (!layer) return;
 
-    // Exclude line/arrow elements — they use custom ArrowControls instead of Transformer
-    const lineArrowIds = new Set(
-      elements.filter((el) => el.type === 'line' || el.type === 'arrow').map((el) => el.id),
-    );
     const selectedNodes = Array.from(selectedIds)
       .filter((id) => !lineArrowIds.has(id))
       .map((id) => stage.findOne(`#${id}`))
@@ -30,7 +33,7 @@ const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
 
     transformer.nodes(selectedNodes);
     layer.batchDraw();
-  }, [selectedIds, elements, stageRef]);
+  }, [selectedIds, lineArrowIds, stageRef]);
 
   const handleTransformEnd = useCallback(() => {
     const transformer = transformerRef.current;
