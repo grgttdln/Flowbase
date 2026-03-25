@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { FlowbaseCanvas, useCanvasStore } from '@flowbase/canvas';
+import { FlowbaseCanvas, useCanvasStore, recalcBoundArrow, getAnchorPoints } from '@flowbase/canvas';
 import type Konva from 'konva';
-import type { ToolType, AIActionType } from '@flowbase/shared';
+import type { ToolType, AIActionType, AnchorPosition, Binding } from '@flowbase/shared';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { getAISettings } from '@/hooks/useAIAction';
 import ToolPicker from '../toolbar/ToolPicker';
@@ -55,35 +55,33 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
   const [isLayoutLoading, setIsLayoutLoading] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const layoutAbortController = useRef<AbortController | null>(null);
-  const {
-    activeTool,
-    setTool,
-    viewport,
-    zoomTo,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    copy,
-    paste,
-    deleteElements,
-    selectedIds,
-    elements,
-    group,
-    ungroup,
-    bringForward,
-    sendBackward,
-    alignLeft,
-    alignCenterH,
-    alignRight,
-    alignTop,
-    alignCenterV,
-    alignBottom,
-    distributeH,
-    distributeV,
-    pushHistory,
-    setElements,
-  } = useCanvasStore();
+  const activeTool = useCanvasStore((s) => s.activeTool);
+  const setTool = useCanvasStore((s) => s.setTool);
+  const viewport = useCanvasStore((s) => s.viewport);
+  const zoomTo = useCanvasStore((s) => s.zoomTo);
+  const undo = useCanvasStore((s) => s.undo);
+  const redo = useCanvasStore((s) => s.redo);
+  const canUndo = useCanvasStore((s) => s.canUndo);
+  const canRedo = useCanvasStore((s) => s.canRedo);
+  const copy = useCanvasStore((s) => s.copy);
+  const paste = useCanvasStore((s) => s.paste);
+  const deleteElements = useCanvasStore((s) => s.deleteElements);
+  const selectedIds = useCanvasStore((s) => s.selectedIds);
+  const elements = useCanvasStore((s) => s.elements);
+  const group = useCanvasStore((s) => s.group);
+  const ungroup = useCanvasStore((s) => s.ungroup);
+  const bringForward = useCanvasStore((s) => s.bringForward);
+  const sendBackward = useCanvasStore((s) => s.sendBackward);
+  const alignLeft = useCanvasStore((s) => s.alignLeft);
+  const alignCenterH = useCanvasStore((s) => s.alignCenterH);
+  const alignRight = useCanvasStore((s) => s.alignRight);
+  const alignTop = useCanvasStore((s) => s.alignTop);
+  const alignCenterV = useCanvasStore((s) => s.alignCenterV);
+  const alignBottom = useCanvasStore((s) => s.alignBottom);
+  const distributeH = useCanvasStore((s) => s.distributeH);
+  const distributeV = useCanvasStore((s) => s.distributeV);
+  const pushHistory = useCanvasStore((s) => s.pushHistory);
+  const setElements = useCanvasStore((s) => s.setElements);
 
   const { status: saveStatus, flushSave } = useAutoSave(projectId, stageRef);
 
@@ -365,6 +363,52 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
       }
     }
 
+    // Build a snapshot of elements at their final target positions for anchor calculation
+    const finalElements = elements.map((el) => {
+      const target = posMap.get(el.id);
+      return target ? { ...el, x: target.x, y: target.y } : el;
+    });
+
+    // Recompute optimal anchor bindings based on final positions
+    // For each bound arrow, find the closest anchor pair between source and target shapes
+    const updatedBindings = new Map<string, { startBinding?: Binding; endBinding?: Binding }>();
+    for (const el of elements) {
+      if ((el.type !== 'arrow' && el.type !== 'line') || (!el.startBinding && !el.endBinding)) continue;
+
+      const sb = el.startBinding;
+      const eb = el.endBinding;
+
+      if (sb && eb) {
+        const sourceEl = finalElements.find((e) => e.id === sb.elementId);
+        const targetEl = finalElements.find((e) => e.id === eb.elementId);
+
+        if (sourceEl && targetEl) {
+          const sourceAnchors = getAnchorPoints(sourceEl);
+          const targetAnchors = getAnchorPoints(targetEl);
+
+          let bestDist = Infinity;
+          let bestSource = sourceAnchors[0];
+          let bestTarget = targetAnchors[0];
+
+          for (const sa of sourceAnchors) {
+            for (const ta of targetAnchors) {
+              const dist = Math.hypot(sa.x - ta.x, sa.y - ta.y);
+              if (dist < bestDist) {
+                bestDist = dist;
+                bestSource = sa;
+                bestTarget = ta;
+              }
+            }
+          }
+
+          updatedBindings.set(el.id, {
+            startBinding: { elementId: sb.elementId, anchor: bestSource.anchor },
+            endBinding: { elementId: eb.elementId, anchor: bestTarget.anchor },
+          });
+        }
+      }
+    }
+
     setLayoutPreview(null);
     pushHistory();
     setIsAnimating(true);
@@ -378,16 +422,28 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
       const progress = Math.min(elapsed / duration, 1);
       const eased = easeOut(progress);
 
-      const updated = elements.map((el) => {
+      // Update shape positions and arrow bindings
+      let updated = elements.map((el) => {
+        const bindingUpdate = updatedBindings.get(el.id);
+        const withBindings = bindingUpdate ? { ...el, ...bindingUpdate } : el;
+
         const start = startPositions.get(el.id);
         const target = posMap.get(el.id);
-        if (!start || !target) return el;
+        if (!start || !target) return withBindings;
 
         return {
-          ...el,
+          ...withBindings,
           x: start.x + (target.x - start.x) * eased,
           y: start.y + (target.y - start.y) * eased,
         };
+      });
+
+      // Recalculate bound arrow positions to follow their connected shapes
+      updated = updated.map((el) => {
+        if ((el.type !== 'arrow' && el.type !== 'line') || (!el.startBinding && !el.endBinding)) return el;
+        const arrowUpdates = recalcBoundArrow(el, updated);
+        if (!arrowUpdates) return el;
+        return { ...el, ...arrowUpdates };
       });
 
       setElements(updated);
