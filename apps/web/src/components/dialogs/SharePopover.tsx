@@ -18,14 +18,31 @@ export default function SharePopover({ onClose }: SharePopoverProps) {
   const remoteUsers = useRemoteUsers(awareness);
   const [copied, setCopied] = useState(false);
   const [confirmStop, setConfirmStop] = useState(false);
+  const [serverDown, setServerDown] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Start sharing on first open if not already sharing
+  // Start sharing on first open — check server health first
   useEffect(() => {
-    if (!isCollaborating && !roomId) {
-      const id = generateRoomId();
-      startCollaboration(id, true);
-    }
+    if (isCollaborating || roomId) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(`${COLLAB_HTTP_URL}/health`, { signal: AbortSignal.timeout(3000) });
+        if (cancelled) return;
+        if (res.ok) {
+          const id = generateRoomId();
+          startCollaboration(id, true);
+        } else {
+          setServerDown(true);
+        }
+      } catch {
+        if (!cancelled) setServerDown(true);
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, [isCollaborating, roomId, startCollaboration]);
 
   // Close on click outside
@@ -87,6 +104,17 @@ export default function SharePopover({ onClose }: SharePopoverProps) {
         </button>
       </div>
 
+      {serverDown && (
+        <div className="mb-4 rounded-lg bg-red-50 px-3 py-2.5">
+          <p className="text-xs font-medium text-red-600">Collaboration unavailable</p>
+          <p className="mt-0.5 text-xs text-red-400">
+            Could not reach the collaboration server. Solo editing continues to work normally.
+          </p>
+        </div>
+      )}
+
+      {!serverDown && (
+      <>
       {/* Share link */}
       <div className="mb-4 flex items-center gap-2">
         <div className="flex-1 truncate rounded-lg bg-[#fafafa] px-3 py-2 font-mono text-xs text-[#52525b]">
@@ -158,6 +186,8 @@ export default function SharePopover({ onClose }: SharePopoverProps) {
       >
         {confirmStop ? 'Confirm — Stop Sharing' : 'Stop Sharing'}
       </button>
+      </>
+      )}
     </div>
   );
 }
