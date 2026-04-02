@@ -11,9 +11,13 @@
   "dependencies": {
     "@flowbase/shared": "workspace:*",
     "konva": "^10.2.3",
+    "lib0": "^0.2.102",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-konva": "^19.2.3",
+    "y-protocols": "^1.0.5",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.27",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
