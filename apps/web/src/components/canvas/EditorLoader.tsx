@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useCanvasStore } from '@flowbase/canvas';
+import { useCanvasStore, CollaborationProvider } from '@flowbase/canvas';
 import type { Project } from '@flowbase/shared';
 import { getProject } from '@/lib/db';
 import CanvasEditor from './CanvasEditor';
@@ -40,7 +40,11 @@ const EditorLoader = ({ projectId }: EditorLoaderProps) => {
     );
   }
 
-  return <CanvasEditor projectId={projectId} projectName={project!.name} />;
+  return (
+    <CollaborationProvider>
+      <CanvasEditor projectId={projectId} projectName={project!.name} />
+    </CollaborationProvider>
+  );
 };
 
 export default EditorLoader;
