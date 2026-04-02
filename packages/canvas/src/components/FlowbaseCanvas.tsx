@@ -693,6 +693,11 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
   const cursor = isSpaceDown || isPanning ? (isPanning ? 'grabbing' : 'grab') : getCursor();
 
+  const cursorViewport = useMemo(
+    () => ({ x: viewport.panX, y: viewport.panY, zoom: viewport.zoom, width, height }),
+    [viewport.panX, viewport.panY, viewport.zoom, width, height]
+  );
+
   const sortedElements = useMemo(
     () => [...elements].sort((a, b) => a.zIndex - b.zIndex),
     [elements]
@@ -808,7 +813,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
             <RemoteSelections remoteUsers={remoteUsers} elements={elements} />
             <RemoteCursors
               remoteUsers={remoteUsers}
-              viewport={{ x: viewport.panX, y: viewport.panY, zoom: viewport.zoom, width, height }}
+              viewport={cursorViewport}
             />
           </Layer>
         )}

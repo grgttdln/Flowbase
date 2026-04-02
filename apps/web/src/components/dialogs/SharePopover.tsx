@@ -114,79 +114,79 @@ export default function SharePopover({ onClose }: SharePopoverProps) {
       )}
 
       {!serverDown && (
-      <>
-      {/* Share link */}
-      <div className="mb-4 flex items-center gap-2">
-        <div className="flex-1 truncate rounded-lg bg-[#fafafa] px-3 py-2 font-mono text-xs text-[#52525b]">
-          {shareLink || 'Generating...'}
-        </div>
-        <button
-          onClick={handleCopy}
-          disabled={!shareLink}
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-[#fafafa] disabled:opacity-40"
-        >
-          {copied ? (
-            <Check size={14} className="text-emerald-500" />
-          ) : (
-            <Copy size={14} className="text-[#a1a1aa]" />
-          )}
-        </button>
-      </div>
-
-      {/* Connection status */}
-      <div className="mb-3">
-        <div className="mb-2 flex items-center gap-2 text-xs text-[#a1a1aa]">
-          <div
-            className={`h-1.5 w-1.5 rounded-full ${
-              status === 'connected'
-                ? 'bg-emerald-500'
-                : status === 'connecting'
-                  ? 'bg-amber-400 animate-pulse'
-                  : 'bg-red-400'
-            }`}
-          />
-          <span>
-            {status === 'connected'
-              ? `Connected (${remoteUsers.length + 1})`
-              : status === 'connecting'
-                ? 'Connecting...'
-                : 'Disconnected'}
-          </span>
-        </div>
-
-        {/* Collaborator list */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-[#52525b]">
-            <div className="h-2 w-2 rounded-full bg-[#7c3aed]" />
-            <span className="font-medium">You (Owner)</span>
-          </div>
-          {remoteUsers.map((user) => (
-            <div
-              key={user.clientId}
-              className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-[#52525b]"
-            >
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: user.color }}
-              />
-              <span>{user.name}</span>
+        <>
+          {/* Share link */}
+          <div className="mb-4 flex items-center gap-2">
+            <div className="flex-1 truncate rounded-lg bg-[#fafafa] px-3 py-2 font-mono text-xs text-[#52525b]">
+              {shareLink || 'Generating...'}
             </div>
-          ))}
-        </div>
-      </div>
+            <button
+              onClick={handleCopy}
+              disabled={!shareLink}
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-[#fafafa] disabled:opacity-40"
+            >
+              {copied ? (
+                <Check size={14} className="text-emerald-500" />
+              ) : (
+                <Copy size={14} className="text-[#a1a1aa]" />
+              )}
+            </button>
+          </div>
 
-      {/* Stop sharing */}
-      <button
-        onClick={handleStopSharing}
-        className={`w-full rounded-xl py-2 text-sm font-medium transition-colors ${
-          confirmStop
-            ? 'bg-red-500 text-white hover:bg-red-600'
-            : 'text-red-500 hover:bg-red-50'
-        }`}
-      >
-        {confirmStop ? 'Confirm — Stop Sharing' : 'Stop Sharing'}
-      </button>
-      </>
+          {/* Connection status */}
+          <div className="mb-3">
+            <div className="mb-2 flex items-center gap-2 text-xs text-[#a1a1aa]">
+              <div
+                className={`h-1.5 w-1.5 rounded-full ${
+                  status === 'connected'
+                    ? 'bg-emerald-500'
+                    : status === 'connecting'
+                      ? 'bg-amber-400 animate-pulse'
+                      : 'bg-red-400'
+                }`}
+              />
+              <span>
+                {status === 'connected'
+                  ? `Connected (${remoteUsers.length + 1})`
+                  : status === 'connecting'
+                    ? 'Connecting...'
+                    : 'Disconnected'}
+              </span>
+            </div>
+
+            {/* Collaborator list */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-[#52525b]">
+                <div className="h-2 w-2 rounded-full bg-[#7c3aed]" />
+                <span className="font-medium">You (Owner)</span>
+              </div>
+              {remoteUsers.map((user) => (
+                <div
+                  key={user.clientId}
+                  className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-[#52525b]"
+                >
+                  <div
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: user.color }}
+                  />
+                  <span>{user.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Stop sharing */}
+          <button
+            onClick={handleStopSharing}
+            className={`w-full rounded-xl py-2 text-sm font-medium transition-colors ${
+              confirmStop
+                ? 'bg-red-500 text-white hover:bg-red-600'
+                : 'text-red-500 hover:bg-red-50'
+            }`}
+          >
+            {confirmStop ? 'Confirm — Stop Sharing' : 'Stop Sharing'}
+          </button>
+        </>
       )}
     </div>
   );
