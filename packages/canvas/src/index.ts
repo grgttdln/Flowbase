@@ -18,3 +18,12 @@ export { getElementBounds, getSelectionBounds, isPointInBounds, doBoundsOverlap 
 export type { BoundingBox } from './utils/geometry';
 export { getAnchorPoints, getAnchorPosition, findNearestAnchor, recalcBoundArrow } from './utils/connectors';
 export type { AnchorPoint } from './utils/connectors';
+
+// Collaboration
+export {
+  CollaborationProvider,
+  useCollaboration,
+  type CollabState,
+  type CollabContextValue,
+  type ConnectionStatus,
+} from './collaboration';
