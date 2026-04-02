@@ -259,6 +259,10 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
   }, [isSpaceDown, activeTool, viewport, deselect, getCanvasPos, onMouseDown, pushHistory, deleteElements]);
 
   const handleStageMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+    // Always broadcast cursor for collaboration, regardless of active tool
+    const cursorPos = getCanvasPos(e);
+    updateCursor(cursorPos.x, cursorPos.y);
+
     // Eraser drag — delete elements as cursor passes over them
     if (isErasing.current && activeTool === 'eraser') {
       const stage = stageRef.current;
@@ -338,9 +342,6 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
     const pos = getCanvasPos(e);
     onMouseMove(pos.x, pos.y);
-
-    // Broadcast cursor position for collaboration
-    updateCursor(pos.x, pos.y);
   }, [isPanning, selectionBox, activeTool, getCanvasPos, onMouseMove, setViewport, select, pushHistory, deleteElements, updateCursor]);
 
   const handleStageMouseUp = useCallback(() => {

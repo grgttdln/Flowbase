@@ -24,6 +24,7 @@ export {
   CollaborationProvider,
   useCollaboration,
   usePresence,
+  useRemoteUsers,
   RemoteCursors,
   RemoteSelections,
   PRESENCE_COLORS,

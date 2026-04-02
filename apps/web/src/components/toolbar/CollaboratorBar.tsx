@@ -1,8 +1,6 @@
 'use client'
 
-import { useCollaboration } from '@flowbase/canvas'
-import { usePresence } from '@flowbase/canvas'
-import type { RemoteUser } from '@flowbase/canvas'
+import { useCollaboration, useRemoteUsers } from '@flowbase/canvas'
 
 interface CollaboratorBarProps {
   onPanToUser?: (x: number, y: number) => void
@@ -10,7 +8,7 @@ interface CollaboratorBarProps {
 
 export default function CollaboratorBar({ onPanToUser }: CollaboratorBarProps) {
   const { awareness, isCollaborating, status } = useCollaboration()
-  const { remoteUsers } = usePresence(awareness)
+  const remoteUsers = useRemoteUsers(awareness)
 
   if (!isCollaborating) return null
 
