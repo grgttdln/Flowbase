@@ -2,8 +2,8 @@ import React, { memo } from 'react'
 import { Group, Path, Label, Tag, Text } from 'react-konva'
 import type { RemoteUser } from './usePresence'
 
-// Classic arrow cursor — narrow triangle, tip at top-left
-const CURSOR_PATH = 'M0 0 L3.5 18 L7 12.5 L14 16 Z'
+// Classic arrow cursor — tip at top-left
+const CURSOR_PATH = 'M0 0 L5 18 L9 12.5 L17 16 Z'
 
 interface RemoteCursorProps {
   user: RemoteUser
@@ -19,8 +19,8 @@ const RemoteCursor = memo(({ user }: RemoteCursorProps) => {
         fill={user.color}
         stroke="#ffffff"
         strokeWidth={1}
-        scaleX={0.85}
-        scaleY={0.85}
+        scaleX={1}
+        scaleY={1}
       />
       <Label x={12} y={16}>
         <Tag
