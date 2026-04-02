@@ -15,8 +15,41 @@ const server = createServer((req, res) => {
   }
 
   if (req.url === '/rooms') {
-    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
     res.end(JSON.stringify(roomManager.listRooms()))
+    return
+  }
+
+  // GET /rooms/:roomId — room info or 404
+  const roomIdMatch = req.url?.match(/^\/rooms\/([A-Za-z0-9_-]{12})$/)
+  if (roomIdMatch && req.method === 'GET') {
+    const info = roomManager.getRoomInfo(roomIdMatch[1])
+    if (info) {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
+      res.end(JSON.stringify(info))
+    } else {
+      res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
+      res.end(JSON.stringify({ error: 'Room not found' }))
+    }
+    return
+  }
+
+  // DELETE /rooms/:roomId — close room
+  if (roomIdMatch && req.method === 'DELETE') {
+    const closed = roomManager.closeRoom(roomIdMatch[1])
+    res.writeHead(closed ? 200 : 404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
+    res.end(JSON.stringify({ closed }))
+    return
+  }
+
+  // Handle CORS preflight for DELETE
+  if (roomIdMatch && req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    })
+    res.end()
     return
   }
 

@@ -48,6 +48,20 @@ class RoomManager {
     return true
   }
 
+  closeRoom(roomId: string): boolean {
+    const room = this.rooms.get(roomId)
+    if (!room) return false
+    room.isSharing = false
+    console.log(`[room] closed: ${roomId}`)
+    const connections = Array.from(room.conns.keys())
+    for (const conn of connections) {
+      room.removeConn(conn)
+      conn.close(4001, 'Session ended by owner')
+    }
+    this.destroyRoom(roomId)
+    return true
+  }
+
   removeClientFromRoom(roomId: string, conn: WebSocket): void {
     const room = this.rooms.get(roomId)
     if (!room) return
