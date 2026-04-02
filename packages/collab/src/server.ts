@@ -9,7 +9,7 @@ const HOST = process.env.HOST || '0.0.0.0'
 
 const server = createServer((req, res) => {
   if (req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
     res.end(JSON.stringify({ status: 'ok', rooms: roomManager.listRooms().length }))
     return
   }
