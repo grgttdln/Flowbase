@@ -1,0 +1,24 @@
+{
+  "name": "@flowbase/collab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/server.ts",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "lib0": "^0.2.102",
+    "nanoid": "^5.1.5",
+    "ws": "^8.18.0",
+    "y-protocols": "^1.0.5",
+    "yjs": "^13.6.27"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
