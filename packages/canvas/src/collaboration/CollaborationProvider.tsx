@@ -136,6 +136,22 @@ export function CollaborationProvider({
     }
   }, [initialRoomId, isOwner, startCollaboration, stopCollaboration])
 
+  // Reconnect on tab focus (browsers throttle background tabs)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && providerRef.current) {
+        // If the provider exists but isn't connected, nudge it to reconnect
+        if (!providerRef.current.wsconnected) {
+          providerRef.current.connect()
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
+
   const value: CollabContextValue = {
     isCollaborating: status === 'connected',
     roomId,
