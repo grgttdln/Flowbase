@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Element, ToolType, Viewport } from '@flowbase/shared';
 import { DEFAULT_VIEWPORT, generateId, DEFAULT_ELEMENT_PROPS, MAX_UNDO_STEPS } from '@flowbase/shared';
 import { getSelectionBounds } from '../utils/geometry';
+import { getIsRemoteUpdate } from '../collaboration/yjsSync';
 
 export interface CanvasState {
   // Elements
@@ -141,6 +142,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   historyIndex: 0,
 
   pushHistory: () => {
+    if (getIsRemoteUpdate()) return;
     const { elements, history, historyIndex } = get();
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(elements.map((el) => ({ ...el })));
