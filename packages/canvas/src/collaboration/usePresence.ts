@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Awareness } from 'y-protocols/awareness'
 import { useCanvasStore } from '../store/useCanvasStore'
-import { CURSOR_THROTTLE_MS, PRESENCE_COLORS, getPresenceColor, getPresenceName } from './constants'
+import { CURSOR_THROTTLE_MS, SELECTION_DEBOUNCE_MS, PRESENCE_COLORS, getPresenceColor, getPresenceName } from './constants'
 
 export interface RemoteUser {
   clientId: number
@@ -60,9 +60,11 @@ export function usePresence(awareness: Awareness | null) {
     }
   }, [awareness])
 
-  // Sync selection from Zustand to awareness
+  // Sync selection from Zustand to awareness (debounced)
   useEffect(() => {
     if (!awareness || !localStateRef.current) return
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
     const unsubscribe = useCanvasStore.subscribe((state) => {
       const selection = Array.from(state.selectedIds)
@@ -76,14 +78,21 @@ export function usePresence(awareness: Awareness | null) {
         return
       }
 
-      localStateRef.current = {
-        ...localStateRef.current,
-        selection,
-      }
-      awareness.setLocalState(localStateRef.current)
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        if (!localStateRef.current) return
+        localStateRef.current = {
+          ...localStateRef.current,
+          selection,
+        }
+        awareness.setLocalState(localStateRef.current)
+      }, SELECTION_DEBOUNCE_MS)
     })
 
-    return unsubscribe
+    return () => {
+      unsubscribe()
+      if (debounceTimer) clearTimeout(debounceTimer)
+    }
   }, [awareness])
 
   // Listen to remote awareness changes
