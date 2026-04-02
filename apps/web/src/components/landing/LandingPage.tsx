@@ -334,6 +334,7 @@ const Hero = () => (
 );
 
 /* ═══════════════════════ FEATURES BENTO ═══════════════════════ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const features = [
   { icon: Infinity, title: 'Infinite canvas', desc: 'Zoom, pan, and build without boundaries. Your canvas grows with your thinking.', span: 'md:col-span-7 md:row-span-2', color: 'text-[#7c3aed]', bg: 'bg-[#7c3aed]/[0.08]' },
   { icon: GripVertical, title: 'Drag & drop', desc: 'Grab nodes, place them anywhere. Connect ideas with a single click.', span: 'md:col-span-5', color: 'text-[#0891b2]', bg: 'bg-[#0891b2]/[0.08]' },
@@ -351,7 +352,7 @@ const Features = () => (
       <ScrollReveal className="text-center">
         <Pill>Features</Pill>
         <h2 className="mt-5 text-[clamp(1.8rem,4vw,3rem)] font-bold tracking-tight text-[#1C1917]">
-          Everything you need, nothing you don't
+          Everything you need, nothing you don&apos;t
         </h2>
         <p className="mx-auto mt-4 max-w-md text-[16px] leading-relaxed text-[#78716C]">
           Built from the ground up for speed and simplicity.

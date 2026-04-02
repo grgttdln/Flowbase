@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { exportFlowbase } from '@/lib/export';
 
 interface SessionEndedScreenProps {
@@ -22,12 +23,12 @@ export default function SessionEndedScreen({ projectName }: SessionEndedScreenPr
           >
             Export a Copy (.flowbase)
           </button>
-          <a
+          <Link
             href="/"
             className="w-full rounded-xl px-6 py-2.5 text-sm text-[#a1a1aa] transition-colors hover:bg-[#fafafa]"
           >
             Go to Flowbase
-          </a>
+          </Link>
         </div>
       </div>
     </div>

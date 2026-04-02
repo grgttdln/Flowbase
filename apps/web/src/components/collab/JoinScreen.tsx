@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 interface JoinScreenProps {
   status: 'connecting' | 'connected' | 'error';
   error?: string;
@@ -19,12 +21,12 @@ export default function JoinScreen({ status, error }: JoinScreenProps) {
             <p className="text-sm text-red-500">
               {error || "This session doesn't exist or has ended."}
             </p>
-            <a
+            <Link
               href="/"
               className="mt-2 rounded-xl bg-[#18181b] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#27272a]"
             >
               Go to Flowbase
-            </a>
+            </Link>
           </>
         ) : (
           <>

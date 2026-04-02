@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { FlowbaseCanvas, useCanvasStore, recalcBoundArrow, getAnchorPoints, useCollaboration } from '@flowbase/canvas';
 import type Konva from 'konva';
-import type { ToolType, AIActionType, AnchorPosition, Binding } from '@flowbase/shared';
+import type { ToolType, AIActionType, Binding } from '@flowbase/shared';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { getAISettings } from '@/hooks/useAIAction';
 import ToolPicker from '../toolbar/ToolPicker';

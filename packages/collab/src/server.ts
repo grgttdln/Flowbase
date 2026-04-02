@@ -91,7 +91,7 @@ server.on('upgrade', (req, socket, head) => {
   })
 })
 
-wss.on('connection', (conn, _req, roomId: string) => {
+wss.on('connection', (conn: any, _req: any, roomId: string) => {
   const room = roomManager.getOrCreateRoom(roomId)
   console.log(`[ws] client connected to room: ${roomId} (${room.connectedClients + 1} clients)`)
 
@@ -101,7 +101,7 @@ wss.on('connection', (conn, _req, roomId: string) => {
     roomManager.removeClientFromRoom(roomId, conn)
   })
 
-  conn.on('error', (err) => {
+  conn.on('error', (err: any) => {
     console.error(`[ws] connection error in room ${roomId}:`, err)
   })
 })
