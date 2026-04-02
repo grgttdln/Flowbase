@@ -6,7 +6,7 @@ import { getProject, saveProject } from '@/lib/db';
 
 export type SaveStatus = 'saved' | 'saving' | 'error';
 
-export function useAutoSave(projectId: string, stageRef: React.RefObject<Konva.Stage | null>) {
+export function useAutoSave(projectId: string, stageRef: React.RefObject<Konva.Stage | null>, enabled = true) {
   const [status, setStatus] = useState<SaveStatus>('saved');
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSave = useRef(false);
@@ -58,6 +58,7 @@ export function useAutoSave(projectId: string, stageRef: React.RefObject<Konva.S
 
   // Subscribe to element changes
   useEffect(() => {
+    if (!enabled) return;
     let prevElements = useCanvasStore.getState().elements;
     const unsub = useCanvasStore.subscribe((state) => {
       if (state.elements !== prevElements) {
@@ -74,7 +75,7 @@ export function useAutoSave(projectId: string, stageRef: React.RefObject<Konva.S
         doSave();
       }
     };
-  }, [scheduleSave, doSave]);
+  }, [scheduleSave, doSave, enabled]);
 
   return { status, flushSave };
 }

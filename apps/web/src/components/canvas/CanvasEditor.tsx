@@ -36,11 +36,12 @@ interface AIPopoverInstance {
 }
 
 interface CanvasEditorProps {
-  projectId: string;
+  projectId?: string;
   projectName: string;
 }
 
 const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
+  const isCollabMode = !projectId;
   const stageRef = useRef<Konva.Stage>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [exportOpen, setExportOpen] = useState(false);
@@ -83,7 +84,7 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
   const pushHistory = useCanvasStore((s) => s.pushHistory);
   const setElements = useCanvasStore((s) => s.setElements);
 
-  const { status: saveStatus, flushSave } = useAutoSave(projectId, stageRef);
+  const { status: saveStatus, flushSave } = useAutoSave(projectId ?? '', stageRef, !isCollabMode);
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; elementId?: string } | null>(null);
 
@@ -584,7 +585,7 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
 
       {/* Logo — top left */}
       <div className="absolute left-4 top-4 z-10">
-        <LogoPill href="/" onBeforeNavigate={flushSave} />
+        <LogoPill href="/" onBeforeNavigate={isCollabMode ? undefined : flushSave} />
       </div>
 
       {/* Tool picker — center top */}
@@ -625,10 +626,12 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
         />
       </div>
 
-      {/* Save indicator — bottom right */}
-      <div className="absolute bottom-4 right-4 z-10">
-        <SaveIndicator status={saveStatus} onSave={flushSave} />
-      </div>
+      {/* Save indicator — bottom right (editor mode only) */}
+      {!isCollabMode && (
+        <div className="absolute bottom-4 right-4 z-10">
+          <SaveIndicator status={saveStatus} onSave={flushSave} />
+        </div>
+      )}
 
       {/* Properties sidebar */}
       <PropertiesSidebar />
