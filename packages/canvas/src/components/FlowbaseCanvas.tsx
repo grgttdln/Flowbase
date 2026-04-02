@@ -803,7 +803,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
           <SelectionLayer stageRef={stageRef} />
         </Layer>
         {/* Remote presence layer */}
-        {remoteUsers.length > 0 && (
+        {awareness && (
           <Layer listening={false}>
             <RemoteSelections remoteUsers={remoteUsers} elements={elements} />
             <RemoteCursors remoteUsers={remoteUsers} />

@@ -86,7 +86,7 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
   const pushHistory = useCanvasStore((s) => s.pushHistory);
   const setElements = useCanvasStore((s) => s.setElements);
 
-  const { isCollaborating } = useCollaboration();
+  const { isCollaborating, status: collabStatus, roomId: collabRoomId } = useCollaboration();
 
   const { status: saveStatus, flushSave } = useAutoSave(projectId ?? '', stageRef, !isCollabMode);
 
@@ -586,6 +586,14 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
         onContextMenu={handleContextMenu}
         layoutPreview={layoutPreview}
       />
+
+      {/* Reconnecting banner */}
+      {collabRoomId && collabStatus !== 'connected' && (
+        <div className="absolute left-1/2 top-14 z-30 flex -translate-x-1/2 items-center gap-2 rounded-[14px] border border-amber-200/60 bg-amber-50/90 px-4 py-2 shadow-sm backdrop-blur-sm">
+          <div className="h-3 w-3 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+          <span className="text-xs font-medium text-amber-700">Reconnecting...</span>
+        </div>
+      )}
 
       {/* Logo — top left */}
       <div className="absolute left-4 top-4 z-10">
