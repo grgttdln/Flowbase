@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Project } from '@flowbase/shared';
+import type { Project, Element } from '@flowbase/shared';
 import { generateId } from '@flowbase/shared';
 import {
   listActiveProjects,
@@ -17,7 +17,7 @@ interface ProjectStore {
   loading: boolean;
 
   loadProjects: () => Promise<void>;
-  createProject: () => Promise<string>;
+  createProject: (name?: string, elements?: Element[]) => Promise<string>;
   renameProject: (id: string, name: string) => Promise<void>;
   softDelete: (id: string) => Promise<void>;
   restore: (id: string) => Promise<void>;
@@ -39,13 +39,13 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({ projects, deleted, loading: false });
   },
 
-  createProject: async () => {
+  createProject: async (name = 'Untitled', elements: Element[] = []) => {
     const id = generateId();
     const now = Date.now();
     const project: Project = {
       id,
-      name: 'Untitled',
-      scene: { version: 1, elements: [] },
+      name,
+      scene: { version: 1, elements },
       thumbnail: '',
       createdAt: now,
       updatedAt: now,
