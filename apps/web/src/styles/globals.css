@@ -1,5 +1,31 @@
 @import 'tailwindcss';
 
+/* Custom cursor — violet filled arrow, Figma-style */
+:root {
+  --cursor-arrow: url("data:image/svg+xml,%3Csvg width='22' height='22' viewBox='0 0 22 22' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 1L20 9.5L11 11L9.5 20L2 1Z' fill='white' stroke='white' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M2 1L20 9.5L11 11L9.5 20L2 1Z' fill='%237c3aed' stroke='%237c3aed' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E") 2 1;
+}
+
+html, html * {
+  cursor: var(--cursor-arrow), default !important;
+}
+
+/* Canvas area: let tool-specific cursors take over via --canvas-cursor */
+.canvas-cursor,
+.canvas-cursor * {
+  cursor: var(--canvas-cursor) !important;
+}
+
+/* Keep standard text cursor for inputs */
+input[type="text"], input[type="password"], input[type="email"],
+input[type="number"], input[type="search"], input[type="url"],
+input[type="tel"], textarea, [contenteditable] {
+  cursor: text !important;
+}
+
+body {
+  font-family: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
+}
+
 /* AI Markdown popover styles */
 .ai-markdown h1 { font-size: 16px; font-weight: 600; margin: 12px 0 6px; }
 .ai-markdown h2 { font-size: 15px; font-weight: 600; margin: 10px 0 4px; }
@@ -9,13 +35,13 @@
 .ai-markdown li { margin: 2px 0; }
 .ai-markdown strong { font-weight: 600; }
 .ai-markdown code {
-  background: #F0F0F0;
+  background: #f4f4f5;
   padding: 1px 4px;
   border-radius: 4px;
   font-size: 12px;
 }
 .ai-markdown pre {
-  background: #F6F8FA;
+  background: #f5f3ff;
   border-radius: 8px;
   padding: 12px;
   overflow-x: auto;
@@ -34,31 +60,37 @@
   margin: 8px 0;
 }
 .ai-markdown th, .ai-markdown td {
-  border: 1px solid #E0E0E0;
+  border: 1px solid #e4e4e7;
   padding: 4px 8px;
   text-align: left;
 }
 .ai-markdown th {
-  background: #F6F8FA;
+  background: #f5f3ff;
   font-weight: 600;
 }
 .ai-markdown tr:nth-child(even) {
-  background: #FAFAFA;
+  background: #fafafa;
 }
 .ai-markdown a {
-  color: #007AFF;
+  color: #7c3aed;
   text-decoration: underline;
 }
 .ai-markdown blockquote {
-  border-left: 3px solid #E0E0E0;
+  border-left: 3px solid #e4e4e7;
   padding-left: 12px;
   margin: 8px 0;
-  color: #666;
+  color: #52525b;
 }
 .ai-markdown hr {
   border: none;
-  border-top: 1px solid #E0E0E0;
+  border-top: 1px solid #e4e4e7;
   margin: 12px 0;
+}
+
+/* Loading shimmer */
+@keyframes loading-shimmer {
+  0% { transform: translateX(-200%); }
+  100% { transform: translateX(300%); }
 }
 
 @keyframes contextMenuIn {
@@ -70,4 +102,116 @@
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* Smooth scroll for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── Landing page entrance animations ── */
+@keyframes landing-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes landing-nav-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes landing-scale-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(16px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+.landing-enter {
+  animation: landing-enter 800ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.landing-nav-enter {
+  animation: landing-nav-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+}
+
+.landing-scale-enter {
+  animation: landing-scale-enter 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Stagger delays via CSS custom property */
+.landing-stagger-1 { animation-delay: 100ms; }
+.landing-stagger-2 { animation-delay: 200ms; }
+.landing-stagger-3 { animation-delay: 350ms; }
+.landing-stagger-4 { animation-delay: 500ms; }
+.landing-stagger-5 { animation-delay: 700ms; }
+
+/* Mobile menu stagger */
+@keyframes landing-menu-item {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.landing-menu-enter {
+  animation: landing-menu-item 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Landing page */
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes landing-drift {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(2px, -2px); }
+  50% { transform: translate(-1px, -3px); }
+  75% { transform: translate(-2px, -1px); }
+}
+
+@keyframes landing-pulse {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(1.08); }
+}
+
+.landing-float {
+  animation: landing-float 8s ease-in-out infinite;
+}
+
+.landing-drift {
+  animation: landing-drift 12s ease-in-out infinite;
+}
+
+.landing-pulse {
+  animation: landing-pulse 10s ease-in-out infinite;
 }

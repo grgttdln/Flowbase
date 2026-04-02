@@ -32,6 +32,8 @@ function getSections(elementType: string): SectionVisibility {
       return { stroke: true, fill: false, strokeWidth: true, fontSize: false, opacity: true, layers: true };
     case 'text':
       return { stroke: true, fill: false, strokeWidth: false, fontSize: true, opacity: true, layers: true };
+    case 'stickynote':
+      return { stroke: true, fill: true, strokeWidth: false, fontSize: true, opacity: true, layers: true };
     default:
       return { stroke: true, fill: true, strokeWidth: true, fontSize: false, opacity: true, layers: true };
   }
@@ -68,7 +70,7 @@ const PropertiesSidebar = () => {
   const isLocked = selectedElement?.locked ?? false;
 
   // Current values — from element or from defaults
-  const currentStroke = selectedElement?.stroke ?? (category ? styleDefaults[category].stroke : '#007AFF');
+  const currentStroke = selectedElement?.stroke ?? (category ? styleDefaults[category].stroke : '#7c3aed');
   const currentFill = selectedElement?.fill ?? (category ? styleDefaults[category].fill : 'transparent');
   const currentStrokeWidth = selectedElement?.strokeWidth ?? (category ? styleDefaults[category].strokeWidth : 2);
   const currentOpacity = selectedElement?.opacity ?? (category ? styleDefaults[category].opacity : 1);
@@ -120,8 +122,10 @@ const PropertiesSidebar = () => {
 
   return (
     <div
-      className={`fixed left-0 top-[72px] z-[5] h-[calc(100vh-88px)] w-[220px] overflow-y-auto rounded-r-2xl bg-white shadow-lg transition-transform duration-200 ease-out ${
-        isVisible ? 'translate-x-0' : '-translate-x-full'
+      className={`fixed left-4 top-[72px] z-[5] w-[220px] rounded-[14px] border border-black/[0.06] bg-white/90 shadow-[0_0_0_0.5px_rgba(0,0,0,0.03),0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.06)] backdrop-blur-xl transition-all duration-200 ease-out ${
+        isVisible
+          ? 'translate-x-0 opacity-100'
+          : '-translate-x-[calc(100%+24px)] opacity-0'
       }`}
     >
       <div className="space-y-5 p-4">
@@ -140,6 +144,7 @@ const PropertiesSidebar = () => {
             value={currentFill}
             onChange={(c) => handleChange('fill', c)}
             disabled={isLocked}
+            allowTransparent
           />
         )}
 

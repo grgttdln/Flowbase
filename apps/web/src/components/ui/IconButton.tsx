@@ -22,9 +22,9 @@ const IconButton = ({
   onClick,
   size = 'md',
 }: IconButtonProps) => {
-  const sizeClasses = size === 'sm' ? 'h-7 w-7' : 'h-9 w-9';
-  const iconSize = size === 'sm' ? 16 : 18;
-  const radiusClass = size === 'sm' ? 'rounded-md' : 'rounded-lg';
+  const sizeClasses = size === 'sm' ? 'h-7 w-7' : 'h-8 w-8';
+  const iconSize = size === 'sm' ? 15 : 17;
+  const radiusClass = size === 'sm' ? 'rounded-[8px]' : 'rounded-[10px]';
 
   return (
     <Tooltip content={label} shortcut={shortcut}>
@@ -33,15 +33,15 @@ const IconButton = ({
         disabled={disabled}
         aria-label={label}
         aria-pressed={isActive}
-        className={`flex items-center justify-center transition-colors duration-150 ${sizeClasses} ${radiusClass} ${
+        className={`flex items-center justify-center transition-all duration-150 ${sizeClasses} ${radiusClass} ${
           disabled
-            ? 'cursor-default text-gray-300'
+            ? 'cursor-default text-black/20'
             : isActive
-              ? 'bg-[#007AFF] text-white'
-              : 'text-[#666666] hover:bg-black/[0.04]'
+              ? 'bg-[#7c3aed]/[0.12] text-[#7c3aed]'
+              : 'text-[#555] hover:bg-black/[0.06] hover:text-[#222] active:scale-[0.92] active:bg-black/[0.08]'
         }`}
       >
-        <Icon size={iconSize} />
+        <Icon size={iconSize} strokeWidth={isActive ? 2.2 : 1.8} />
       </button>
     </Tooltip>
   );

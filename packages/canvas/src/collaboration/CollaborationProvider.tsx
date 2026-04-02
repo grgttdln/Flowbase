@@ -1,12 +1,13 @@
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react'
 import * as Y from 'yjs'
-// @ts-expect-error y-websocket has no types
+// @ts-ignore y-websocket has no types
 import { WebsocketProvider } from 'y-websocket'
 import type { Awareness } from 'y-protocols/awareness'
 import { useCanvasStore } from '../store/useCanvasStore'
 import { initYDocFromStore, initStoreFromYDoc, startSync } from './yjsSync'
 import type { CollabContextValue, ConnectionStatus } from './types'
 
+declare const process: { env: Record<string, string | undefined> }
 const COLLAB_SERVER_URL = process.env.NEXT_PUBLIC_COLLAB_URL || 'ws://localhost:4444'
 
 export const CollabContext = createContext<CollabContextValue>({

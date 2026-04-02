@@ -164,7 +164,7 @@ const ContextMenu = ({ x, y, hasSelection, selectionCount, elementCount = 0, onA
     >
       {cleanItems.map((item, i) => {
         if (item === 'divider') {
-          return <div key={`d-${i}`} className="mx-2 my-1 h-px bg-[#F0F0F0]" />;
+          return <div key={`d-${i}`} className="mx-2 my-1 h-px bg-[#e4e4e7]" />;
         }
 
         const Icon = item.icon;
@@ -180,18 +180,18 @@ const ContextMenu = ({ x, y, hasSelection, selectionCount, elementCount = 0, onA
             }}
             className={`flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] font-medium transition-colors duration-150 ${
               isAI
-                ? 'text-[#007AFF] hover:bg-[rgba(0,122,255,0.06)]'
-                : 'text-[#1C1C1E] hover:bg-black/[0.04]'
+                ? 'text-[#7c3aed] hover:bg-[rgba(124,58,237,0.06)]'
+                : 'text-[#18181b] hover:bg-black/[0.04]'
             }`}
           >
             {isAI ? (
               <Sparkles size={15} className="shrink-0" />
             ) : (
-              <Icon size={15} className="shrink-0 text-[#666666]" />
+              <Icon size={15} className="shrink-0 text-[#52525b]" />
             )}
             <span className="flex-1 text-left">{item.label}</span>
             {item.shortcut && (
-              <span className="text-[11px] text-[#999999]">{item.shortcut}</span>
+              <span className="text-[11px] text-[#a1a1aa]">{item.shortcut}</span>
             )}
           </button>
         );

@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 
-const LandingPage = dynamic(() => import('@/components/landing/LandingPage'), {
+const ProjectList = dynamic(() => import('@/components/home/ProjectList'), {
   ssr: false,
   loading: () => (
     <div className="flex min-h-[100dvh] items-center justify-center bg-white">
@@ -23,8 +23,8 @@ const LandingPage = dynamic(() => import('@/components/landing/LandingPage'), {
   ),
 });
 
-const HomePage = () => {
-  return <LandingPage />;
+const ProjectsPage = () => {
+  return <ProjectList />;
 };
 
-export default HomePage;
+export default ProjectsPage;

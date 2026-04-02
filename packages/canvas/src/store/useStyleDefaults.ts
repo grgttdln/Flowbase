@@ -13,7 +13,8 @@ interface StyleDefaultsState {
   shapes: CategoryDefaults;
   lines: CategoryDefaults;
   text: CategoryDefaults;
-  update: (category: 'shapes' | 'lines' | 'text', updates: Partial<CategoryDefaults>) => void;
+  stickynote: CategoryDefaults;
+  update: (category: ToolCategory, updates: Partial<CategoryDefaults>) => void;
 }
 
 const SHAPE_DEFAULTS: CategoryDefaults = {
@@ -40,7 +41,15 @@ const TEXT_DEFAULTS: CategoryDefaults = {
   fontSize: 16,
 };
 
-export type ToolCategory = 'shapes' | 'lines' | 'text';
+const STICKYNOTE_DEFAULTS: CategoryDefaults = {
+  stroke: '#713f12',
+  fill: '#fef08a',
+  strokeWidth: 0,
+  opacity: 1,
+  fontSize: 14,
+};
+
+export type ToolCategory = 'shapes' | 'lines' | 'text' | 'stickynote';
 
 export function getToolCategory(toolOrType: string): ToolCategory | null {
   switch (toolOrType) {
@@ -54,6 +63,8 @@ export function getToolCategory(toolOrType: string): ToolCategory | null {
       return 'lines';
     case 'text':
       return 'text';
+    case 'stickynote':
+      return 'stickynote';
     default:
       return null;
   }
@@ -65,6 +76,7 @@ export const useStyleDefaults = create<StyleDefaultsState>()(
       shapes: { ...SHAPE_DEFAULTS },
       lines: { ...LINE_DEFAULTS },
       text: { ...TEXT_DEFAULTS },
+      stickynote: { ...STICKYNOTE_DEFAULTS },
       update: (category, updates) => {
         set({ [category]: { ...get()[category], ...updates } });
       },

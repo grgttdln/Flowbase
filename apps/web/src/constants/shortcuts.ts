@@ -16,6 +16,9 @@ export const SHORTCUTS: Shortcut[] = [
   { keys: ['A'], label: 'Arrow', category: 'Tools' },
   { keys: ['P'], label: 'Freehand', category: 'Tools' },
   { keys: ['T'], label: 'Text', category: 'Tools' },
+  { keys: ['S'], label: 'Sticky note', category: 'Tools' },
+  { keys: ['K'], label: 'Laser pointer', category: 'Tools' },
+  { keys: ['E'], label: 'Eraser', category: 'Tools' },
 
   // Canvas
   { keys: ['Scroll'], label: 'Zoom', category: 'Canvas' },

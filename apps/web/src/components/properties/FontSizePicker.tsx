@@ -16,7 +16,7 @@ interface FontSizePickerProps {
 const FontSizePicker = ({ value, onChange, disabled }: FontSizePickerProps) => {
   return (
     <div className={disabled ? 'opacity-40 pointer-events-none' : ''}>
-      <span className="mb-2 block text-[13px] font-medium text-[#333]">Font size</span>
+      <span className="mb-2 block text-[13px] font-medium text-[#18181b]">Font size</span>
       <div className="flex gap-1.5">
         {SIZES.map(({ value: s, label }) => (
           <button
@@ -24,8 +24,8 @@ const FontSizePicker = ({ value, onChange, disabled }: FontSizePickerProps) => {
             onClick={() => onChange(s)}
             className={`flex h-9 w-12 items-center justify-center rounded-lg text-[13px] font-medium transition-colors ${
               value === s
-                ? 'bg-[#E8E0FF] text-[#333]'
-                : 'bg-[#F5F5F5] text-[#666] hover:bg-[#EBEBEB]'
+                ? 'bg-[#ede9fe] text-[#18181b]'
+                : 'bg-[#fafafa] text-[#52525b] hover:bg-[#e4e4e7]'
             }`}
           >
             {label}

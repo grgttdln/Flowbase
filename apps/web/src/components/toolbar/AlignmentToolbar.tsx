@@ -62,7 +62,7 @@ const AlignmentToolbar = () => {
 
   return (
     <div
-      className="fixed z-20 flex items-center gap-0.5 rounded-xl bg-white px-1.5 py-1 shadow-[0_2px_12px_rgba(0,0,0,0.1),0_0_0_1px_rgba(0,0,0,0.04)]"
+      className="fixed z-20 flex items-center gap-0.5 rounded-[14px] border border-black/[0.06] bg-white/90 px-1.5 py-1 shadow-[0_0_0_0.5px_rgba(0,0,0,0.03),0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.06)] backdrop-blur-xl"
       style={{
         left: screenX,
         top: screenY - 48,
@@ -72,12 +72,12 @@ const AlignmentToolbar = () => {
       {buttons.map(({ icon: Icon, label, action, minCount }, i) => (
         <span key={label}>
           {i === 6 && (
-            <span className="mx-0.5 inline-block h-5 w-px bg-[#E5E5E5]" />
+            <span className="mx-0.5 inline-block h-5 w-px bg-black/[0.08]" />
           )}
           <button
             onClick={action}
             disabled={selected.length < minCount}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-[#666] transition-colors hover:bg-black/[0.04] hover:text-[#333] disabled:pointer-events-none disabled:opacity-30"
+            className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[#555] transition-all duration-150 hover:bg-black/[0.06] hover:text-[#222] active:scale-[0.92] disabled:pointer-events-none disabled:text-black/20"
             aria-label={label}
             title={label}
           >

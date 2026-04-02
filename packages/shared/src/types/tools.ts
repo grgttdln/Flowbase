@@ -6,4 +6,7 @@ export type ToolType =
   | 'line'
   | 'arrow'
   | 'freehand'
-  | 'text';
+  | 'text'
+  | 'stickynote'
+  | 'laser'
+  | 'eraser';

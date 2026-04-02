@@ -1,18 +1,18 @@
 export const UI_COLORS = {
-  accent: '#007AFF',
-  success: '#34C759',
-  danger: '#FF3B30',
-  warning: '#FF9500',
+  accent: '#7c3aed',
+  success: '#16a34a',
+  danger: '#dc2626',
+  warning: '#d97706',
 } as const;
 
 export const SHAPE_COLORS = [
-  '#007AFF',
-  '#34C759',
-  '#FF3B30',
+  '#7c3aed',
+  '#16a34a',
+  '#dc2626',
   '#AF52DE',
-  '#FF9500',
+  '#d97706',
   '#8E8E93',
 ] as const;
 
-export const DEFAULT_STROKE = '#007AFF';
+export const DEFAULT_STROKE = '#7c3aed';
 export const DEFAULT_FILL = 'transparent';

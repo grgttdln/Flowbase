@@ -31,7 +31,7 @@ const OpacitySlider = ({ value, onChange, onChangeStart, disabled }: OpacitySlid
 
   return (
     <div className={disabled ? 'opacity-40 pointer-events-none' : ''}>
-      <span className="mb-2 block text-[13px] font-medium text-[#333]">Opacity</span>
+      <span className="mb-2 block text-[13px] font-medium text-[#18181b]">Opacity</span>
       <input
         type="range"
         min={0}
@@ -39,9 +39,9 @@ const OpacitySlider = ({ value, onChange, onChangeStart, disabled }: OpacitySlid
         value={displayValue}
         onChange={handleChange}
         onPointerUp={handlePointerUp}
-        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[#E0E0F0] accent-[#007AFF]"
+        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[#e4e4e7] accent-[#7c3aed]"
       />
-      <div className="mt-1 flex justify-between text-[11px] text-[#999]">
+      <div className="mt-1 flex justify-between text-[11px] text-[#a1a1aa]">
         <span>0</span>
         <span>{displayValue}</span>
         <span>100</span>

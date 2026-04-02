@@ -116,29 +116,29 @@ const AIResponsePopover = ({
     >
       {/* Header — drag handle */}
       <div
-        className={`flex items-center gap-2 border-b border-[#F0F0F0] px-4 py-2.5 ${
+        className={`flex items-center gap-2 border-b border-[#e4e4e7] px-4 py-2.5 ${
           dragging ? 'cursor-grabbing' : 'cursor-grab'
         }`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
-        <span className="flex-1 truncate text-[13px] font-semibold text-[#007AFF]">
+        <span className="flex-1 truncate text-[13px] font-semibold text-[#7c3aed]">
           {ACTION_LABELS[action]}
           {collapsed && preview && (
-            <span className="ml-1.5 font-normal text-[#999]">— {preview}</span>
+            <span className="ml-1.5 font-normal text-[#a1a1aa]">— {preview}</span>
           )}
         </span>
         <button
           onClick={() => onToggleCollapse(id)}
-          className="rounded-md p-1 text-[#999] transition-colors hover:bg-black/[0.04] hover:text-[#666]"
+          className="rounded-md p-1 text-[#a1a1aa] transition-colors hover:bg-black/[0.04] hover:text-[#52525b]"
           aria-label={collapsed ? 'Expand' : 'Collapse'}
         >
           {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
         </button>
         <button
           onClick={() => onClose(id)}
-          className="rounded-md p-1 text-[#999] transition-colors hover:bg-black/[0.04] hover:text-[#666]"
+          className="rounded-md p-1 text-[#a1a1aa] transition-colors hover:bg-black/[0.04] hover:text-[#52525b]"
           aria-label="Close"
         >
           <X size={14} />
@@ -159,14 +159,14 @@ const AIResponsePopover = ({
                 <p className="text-[13px] text-red-500">{error}</p>
                 <button
                   onClick={() => onRetry(id)}
-                  className="inline-flex items-center gap-1.5 self-start rounded-lg bg-[#F5F5F5] px-3 py-1.5 text-[12px] font-medium text-[#333] transition-colors hover:bg-[#EBEBEB]"
+                  className="inline-flex items-center gap-1.5 self-start rounded-lg bg-[#fafafa] px-3 py-1.5 text-[12px] font-medium text-[#18181b] transition-colors hover:bg-[#e4e4e7]"
                 >
                   <RotateCcw size={12} />
                   Retry
                 </button>
               </div>
             ) : text ? (
-              <div className="ai-markdown max-w-none text-[13px] leading-relaxed text-[#333]">
+              <div className="ai-markdown max-w-none text-[13px] leading-relaxed text-[#18181b]">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeHighlight]}
@@ -181,19 +181,19 @@ const AIResponsePopover = ({
               </div>
             ) : isLoading ? (
               <div className="space-y-2">
-                <div className="h-3 w-3/4 animate-pulse rounded bg-[#F0F0F0]" />
-                <div className="h-3 w-1/2 animate-pulse rounded bg-[#F0F0F0]" />
-                <div className="h-3 w-2/3 animate-pulse rounded bg-[#F0F0F0]" />
+                <div className="h-3 w-3/4 animate-pulse rounded bg-[#e4e4e7]" />
+                <div className="h-3 w-1/2 animate-pulse rounded bg-[#e4e4e7]" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-[#e4e4e7]" />
               </div>
             ) : null}
           </div>
 
           {/* Footer — only show when there's text */}
           {text && !error && (
-            <div className="border-t border-[#F0F0F0] px-4 py-2">
+            <div className="border-t border-[#e4e4e7] px-4 py-2">
               <button
                 onClick={handleCopy}
-                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-[#666] transition-colors hover:bg-black/[0.04] hover:text-[#333]"
+                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-[#52525b] transition-colors hover:bg-black/[0.04] hover:text-[#18181b]"
               >
                 <Copy size={12} />
                 Copy

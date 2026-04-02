@@ -5,7 +5,8 @@ export type ElementType =
   | 'line'
   | 'arrow'
   | 'freehand'
-  | 'text';
+  | 'text'
+  | 'stickynote';
 
 export type AnchorPosition = 'top' | 'bottom' | 'left' | 'right';
 

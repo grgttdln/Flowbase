@@ -4,6 +4,7 @@ import { DEFAULT_ELEMENT_PROPS, DEFAULT_STROKE, generateId } from '@flowbase/sha
 import { useCanvasStore } from '../store/useCanvasStore';
 import { useStyleDefaults, getToolCategory } from '../store/useStyleDefaults';
 import { findNearestAnchor, recalcBoundArrow, type AnchorPoint } from '../utils/connectors';
+import { CURSOR_SELECT, CURSOR_PLUS, CURSOR_CROSSHAIR, CURSOR_PENCIL, CURSOR_ERASER, CURSOR_LASER, CURSOR_STICKYNOTE } from './cursors';
 
 export const useToolHandlers = () => {
   const startPos = useRef<{ x: number; y: number } | null>(null);
@@ -44,7 +45,7 @@ export const useToolHandlers = () => {
   }, [activeTool, styleDefaults]);
 
   const onMouseDown = useCallback((x: number, y: number) => {
-    if (activeTool === 'select') return;
+    if (activeTool === 'select' || activeTool === 'laser' || activeTool === 'eraser') return;
 
     startAnchor.current = null;
     endAnchor.current = null;
@@ -90,6 +91,21 @@ export const useToolHandlers = () => {
         fontSize: textDefaults.fontSize,
         ...getShapeDefaults(),
         stroke: textDefaults.stroke,
+      });
+      setIsDrawing(false);
+    } else if (activeTool === 'stickynote') {
+      const noteDefaults = styleDefaults.stickynote;
+      addElement({
+        type: 'stickynote',
+        x: x - 100,
+        y: y - 100,
+        width: 200,
+        height: 200,
+        text: '',
+        fontSize: noteDefaults.fontSize,
+        ...getShapeDefaults(),
+        fill: noteDefaults.fill,
+        stroke: noteDefaults.stroke,
       });
       setIsDrawing(false);
     } else {
@@ -204,9 +220,24 @@ export const useToolHandlers = () => {
   const getCursor = useCallback((): string => {
     switch (activeTool) {
       case 'select':
-        return 'default';
+        return CURSOR_SELECT;
+      case 'rectangle':
+      case 'ellipse':
+      case 'diamond':
+        return CURSOR_PLUS;
+      case 'stickynote':
+        return CURSOR_STICKYNOTE;
+      case 'line':
+      case 'arrow':
+        return CURSOR_CROSSHAIR;
+      case 'freehand':
+        return CURSOR_PENCIL;
       case 'text':
         return 'text';
+      case 'eraser':
+        return CURSOR_ERASER;
+      case 'laser':
+        return CURSOR_LASER;
       default:
         return 'crosshair';
     }

@@ -47,11 +47,11 @@ const SettingsPanel = ({ open, onClose, hint }: SettingsPanelProps) => {
         aria-label="Settings"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#F0F0F0] px-5 py-3.5">
-          <span className="text-[15px] font-semibold text-[#1C1C1E]">AI Settings</span>
+        <div className="flex items-center justify-between border-b border-[#e4e4e7] px-5 py-3.5">
+          <span className="text-[15px] font-semibold text-[#18181b]">AI Settings</span>
           <button
             onClick={onClose}
-            className="rounded-md p-1 text-[#999] transition-colors hover:bg-black/[0.04] hover:text-[#666]"
+            className="rounded-md p-1 text-[#a1a1aa] transition-colors hover:bg-black/[0.04] hover:text-[#52525b]"
             aria-label="Close"
           >
             <X size={16} />
@@ -61,14 +61,14 @@ const SettingsPanel = ({ open, onClose, hint }: SettingsPanelProps) => {
         {/* Body */}
         <div className="space-y-4 px-5 py-4">
           {hint && (
-            <div className="rounded-lg bg-[#FFF8E1] px-3 py-2 text-[13px] text-[#8B6914]">
+            <div className="rounded-lg bg-[#fefce8] px-3 py-2 text-[13px] text-[#92400e]">
               {hint}
             </div>
           )}
 
           {/* API Key */}
           <div className="space-y-1.5">
-            <label className="block text-[13px] font-medium text-[#333]">
+            <label className="block text-[13px] font-medium text-[#18181b]">
               OpenRouter API Key
             </label>
             <input
@@ -79,13 +79,13 @@ const SettingsPanel = ({ open, onClose, hint }: SettingsPanelProps) => {
                 setTestStatus('idle');
               }}
               placeholder="sk-or-..."
-              className="w-full rounded-lg border border-[#E0E0E0] bg-white px-3 py-2 text-[13px] text-[#333] outline-none transition-colors placeholder:text-[#BBB] focus:border-[#007AFF]"
+              className="w-full rounded-lg border border-[#e4e4e7] bg-white px-3 py-2 text-[13px] text-[#18181b] outline-none transition-colors placeholder:text-[#a1a1aa] focus:border-[#7c3aed]"
             />
           </div>
 
           {/* Model */}
           <div className="space-y-1.5">
-            <label className="block text-[13px] font-medium text-[#333]">
+            <label className="block text-[13px] font-medium text-[#18181b]">
               Model
             </label>
             <input
@@ -96,9 +96,9 @@ const SettingsPanel = ({ open, onClose, hint }: SettingsPanelProps) => {
                 setTestStatus('idle');
               }}
               placeholder={DEFAULT_MODEL}
-              className="w-full rounded-lg border border-[#E0E0E0] bg-white px-3 py-2 text-[13px] font-mono text-[#333] outline-none transition-colors placeholder:text-[#BBB] focus:border-[#007AFF]"
+              className="w-full rounded-lg border border-[#e4e4e7] bg-white px-3 py-2 text-[13px] font-mono text-[#18181b] outline-none transition-colors placeholder:text-[#a1a1aa] focus:border-[#7c3aed]"
             />
-            <p className="text-[11px] text-[#999]">
+            <p className="text-[11px] text-[#a1a1aa]">
               Any OpenRouter model ID. Default: {DEFAULT_MODEL}
             </p>
           </div>
@@ -108,7 +108,7 @@ const SettingsPanel = ({ open, onClose, hint }: SettingsPanelProps) => {
             <button
               onClick={handleTest}
               disabled={!apiKey || testStatus === 'testing'}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#F5F5F5] px-3 py-1.5 text-[13px] font-medium text-[#333] transition-colors hover:bg-[#EBEBEB] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#fafafa] px-3 py-1.5 text-[13px] font-medium text-[#18181b] transition-colors hover:bg-[#e4e4e7] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {testStatus === 'testing' && <Loader2 size={13} className="animate-spin" />}
               Test Connection
@@ -127,16 +127,16 @@ const SettingsPanel = ({ open, onClose, hint }: SettingsPanelProps) => {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 border-t border-[#F0F0F0] px-5 py-3.5">
+        <div className="flex justify-end gap-2 border-t border-[#e4e4e7] px-5 py-3.5">
           <button
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-[13px] font-medium text-[#666] transition-colors hover:bg-black/[0.04]"
+            className="rounded-lg px-4 py-2 text-[13px] font-medium text-[#52525b] transition-colors hover:bg-black/[0.04]"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="rounded-lg bg-[#007AFF] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0066DD]"
+            className="rounded-lg bg-[#7c3aed] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#6d28d9]"
           >
             Save
           </button>

@@ -167,14 +167,14 @@ const GenerateDialog = ({ open, onClose, onNeedsApiKey }: GenerateDialogProps) =
         aria-label="Generate diagram"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#F0F0F0] px-5 py-3.5">
+        <div className="flex items-center justify-between border-b border-[#e4e4e7] px-5 py-3.5">
           <div className="flex items-center gap-2">
-            <Wand2 size={16} className="text-[#007AFF]" />
-            <span className="text-[15px] font-semibold text-[#1C1C1E]">Generate Diagram</span>
+            <Wand2 size={16} className="text-[#7c3aed]" />
+            <span className="text-[15px] font-semibold text-[#18181b]">Generate Diagram</span>
           </div>
           <button
             onClick={onClose}
-            className="rounded-md p-1 text-[#999] transition-colors hover:bg-black/[0.04] hover:text-[#666]"
+            className="rounded-md p-1 text-[#a1a1aa] transition-colors hover:bg-black/[0.04] hover:text-[#52525b]"
             aria-label="Close"
           >
             <X size={16} />
@@ -194,7 +194,7 @@ const GenerateDialog = ({ open, onClose, onNeedsApiKey }: GenerateDialogProps) =
               }
             }}
             placeholder="Describe the diagram you want to create...&#10;&#10;e.g. &quot;A flowchart showing user authentication with login, 2FA verification, and dashboard steps&quot;"
-            className="h-[120px] w-full resize-none rounded-xl border border-[#E0E0E0] bg-[#FAFAFA] px-4 py-3 text-[14px] text-[#1C1C1E] placeholder-[#999] outline-none transition-colors focus:border-[#007AFF] focus:bg-white"
+            className="h-[120px] w-full resize-none rounded-xl border border-[#e4e4e7] bg-[#fafafa] px-4 py-3 text-[14px] text-[#18181b] placeholder-[#a1a1aa] outline-none transition-colors focus:border-[#7c3aed] focus:bg-white"
             disabled={isLoading}
           />
 
@@ -207,14 +207,14 @@ const GenerateDialog = ({ open, onClose, onNeedsApiKey }: GenerateDialogProps) =
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-[#F0F0F0] px-5 py-3.5">
-          <span className="text-[11px] text-[#999]">
+        <div className="flex items-center justify-between border-t border-[#e4e4e7] px-5 py-3.5">
+          <span className="text-[11px] text-[#a1a1aa]">
             {isLoading ? 'Generating...' : '⌘↵ to generate'}
           </span>
           <button
             onClick={handleGenerate}
             disabled={!prompt.trim() || isLoading}
-            className="flex items-center gap-2 rounded-xl bg-[#007AFF] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#0066DD] disabled:opacity-40 disabled:pointer-events-none"
+            className="flex items-center gap-2 rounded-xl bg-[#7c3aed] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#6d28d9] disabled:opacity-40 disabled:pointer-events-none"
           >
             {isLoading ? (
               <>

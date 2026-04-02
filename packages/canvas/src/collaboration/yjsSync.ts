@@ -44,7 +44,7 @@ function yMapToElement(yMap: Y.Map<unknown>): Element {
       obj[key] = value
     }
   })
-  return obj as Element
+  return obj as unknown as Element
 }
 
 /**
@@ -122,7 +122,7 @@ export function startSync(
           const yMap = elementsMap.get(id)
           if (yMap instanceof Y.Map) {
             for (const [key, value] of Object.entries(element)) {
-              const prevValue = (prev as Record<string, unknown>)[key]
+              const prevValue = (prev as unknown as Record<string, unknown>)[key]
               if (value !== prevValue) {
                 if (value === undefined) {
                   yMap.delete(key)
@@ -135,7 +135,7 @@ export function startSync(
             }
             // Handle removed keys
             for (const key of Object.keys(prev)) {
-              if (!(key in element) || (element as Record<string, unknown>)[key] === undefined) {
+              if (!(key in element) || (element as unknown as Record<string, unknown>)[key] === undefined) {
                 yMap.delete(key)
               }
             }

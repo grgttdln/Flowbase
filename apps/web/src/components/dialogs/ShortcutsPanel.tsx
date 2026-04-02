@@ -30,11 +30,11 @@ const ShortcutsPanel = ({ open, onClose }: ShortcutsPanelProps) => {
         aria-label="Keyboard shortcuts"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#F0F0F0] px-5 py-3.5">
-          <span className="text-[15px] font-semibold text-[#1C1C1E]">Keyboard Shortcuts</span>
+        <div className="flex items-center justify-between border-b border-[#e4e4e7] px-5 py-3.5">
+          <span className="text-[15px] font-semibold text-[#18181b]">Keyboard Shortcuts</span>
           <button
             onClick={onClose}
-            className="rounded-md p-1 text-[#999] transition-colors hover:bg-black/[0.04] hover:text-[#666]"
+            className="rounded-md p-1 text-[#a1a1aa] transition-colors hover:bg-black/[0.04] hover:text-[#52525b]"
             aria-label="Close"
           >
             <X size={16} />
@@ -48,7 +48,7 @@ const ShortcutsPanel = ({ open, onClose }: ShortcutsPanelProps) => {
             if (items.length === 0) return null;
             return (
               <div key={category}>
-                <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#999]">
+                <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#a1a1aa]">
                   {category}
                 </h3>
                 <div className="space-y-1">
@@ -57,12 +57,12 @@ const ShortcutsPanel = ({ open, onClose }: ShortcutsPanelProps) => {
                       key={shortcut.label}
                       className="flex items-center justify-between rounded-lg px-2 py-1.5"
                     >
-                      <span className="text-[13px] text-[#333]">{shortcut.label}</span>
+                      <span className="text-[13px] text-[#18181b]">{shortcut.label}</span>
                       <div className="flex items-center gap-1">
                         {shortcut.keys.map((key) => (
                           <kbd
                             key={key}
-                            className="inline-flex min-w-[24px] items-center justify-center rounded-md border border-[#E0E0E0] bg-[#F5F5F5] px-1.5 py-0.5 text-[11px] font-medium text-[#555]"
+                            className="inline-flex min-w-[24px] items-center justify-center rounded-md border border-[#e4e4e7] bg-[#fafafa] px-1.5 py-0.5 text-[11px] font-medium text-[#52525b]"
                           >
                             {key}
                           </kbd>

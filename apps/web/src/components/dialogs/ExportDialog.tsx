@@ -45,36 +45,36 @@ const ExportDialog = ({ projectName, stageRef, onClose }: ExportDialogProps) => 
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
     >
       <div className="w-80 rounded-2xl bg-white p-6 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
-        <h2 className="mb-1 text-lg font-semibold text-[#1a1a1a]">Export Project</h2>
-        <p className="mb-5 text-sm text-[#999999]">Choose a format</p>
+        <h2 className="mb-1 text-lg font-semibold text-[#18181b]">Export Project</h2>
+        <p className="mb-5 text-sm text-[#a1a1aa]">Choose a format</p>
 
         <div className="flex flex-col gap-2">
           <button
             onClick={handleFlowbase}
-            className="flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:bg-[#F5F5F5]"
+            className="flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:bg-[#fafafa]"
           >
-            <FileJson size={20} className="text-[#007AFF]" />
+            <FileJson size={20} className="text-[#7c3aed]" />
             <div>
-              <div className="text-[13px] font-medium text-[#1a1a1a]">Flowbase Project</div>
-              <div className="text-[11px] text-[#999999]">.flowbase — full project data</div>
+              <div className="text-[13px] font-medium text-[#18181b]">Flowbase Project</div>
+              <div className="text-[11px] text-[#a1a1aa]">.flowbase — full project data</div>
             </div>
           </button>
 
           <button
             onClick={handlePNG}
-            className="flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:bg-[#F5F5F5]"
+            className="flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:bg-[#fafafa]"
           >
-            <Image size={20} className="text-[#34C759]" />
+            <Image size={20} className="text-[#16a34a]" />
             <div>
-              <div className="text-[13px] font-medium text-[#1a1a1a]">Image</div>
-              <div className="text-[11px] text-[#999999]">.png — 2x resolution</div>
+              <div className="text-[13px] font-medium text-[#18181b]">Image</div>
+              <div className="text-[11px] text-[#a1a1aa]">.png — 2x resolution</div>
             </div>
           </button>
         </div>
 
         <button
           onClick={onClose}
-          className="mt-4 w-full rounded-xl py-2 text-sm text-[#999999] transition-colors hover:bg-[#F5F5F5]"
+          className="mt-4 w-full rounded-xl py-2 text-sm text-[#a1a1aa] transition-colors hover:bg-[#fafafa]"
         >
           Cancel
         </button>

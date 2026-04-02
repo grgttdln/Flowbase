@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import FloatingPill from '../ui/FloatingPill';
 
@@ -10,8 +11,8 @@ interface LogoPillProps {
 
 const LogoPill = ({ href, onBeforeNavigate }: LogoPillProps) => {
   const content = (
-    <FloatingPill className="px-3 py-2">
-      <span className="text-[15px] font-bold text-[#007AFF]">Flowbase</span>
+    <FloatingPill className="flex items-center px-2.5 py-2">
+      <Image src="/logo.png" alt="Flowbase" width={20} height={20} />
     </FloatingPill>
   );
 
