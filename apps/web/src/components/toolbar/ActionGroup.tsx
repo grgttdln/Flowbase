@@ -1,40 +1,32 @@
 'use client';
 
-import { Undo2, Redo2, Download, Settings, Keyboard } from 'lucide-react';
+import { Download, Settings, Keyboard, Share2 } from 'lucide-react';
 import FloatingPill from '../ui/FloatingPill';
 import IconButton from '../ui/IconButton';
 
 interface ActionGroupProps {
-  canUndo: boolean;
-  canRedo: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
   onExport: () => void;
   onSettings: () => void;
   onShortcuts: () => void;
+  onShare?: () => void;
+  isSharing?: boolean;
 }
 
-const ActionGroup = ({ canUndo, canRedo, onUndo, onRedo, onExport, onSettings, onShortcuts }: ActionGroupProps) => {
+const ActionGroup = ({ onExport, onSettings, onShortcuts, onShare, isSharing }: ActionGroupProps) => {
   return (
-    <FloatingPill className="flex items-center gap-0.5 p-1.5">
-      <IconButton
-        icon={Undo2}
-        label="Undo"
-        shortcut="⌘Z"
-        disabled={!canUndo}
-        onClick={onUndo}
-      />
-      <IconButton
-        icon={Redo2}
-        label="Redo"
-        shortcut="⌘⇧Z"
-        disabled={!canRedo}
-        onClick={onRedo}
-      />
-      <div className="mx-1 h-5 w-px bg-[#E5E5E5]" />
-      <IconButton icon={Download} label="Export" onClick={onExport} />
-      <IconButton icon={Keyboard} label="Shortcuts" shortcut="?" onClick={onShortcuts} />
-      <IconButton icon={Settings} label="Settings" onClick={onSettings} />
+    <FloatingPill className="flex items-center gap-0.5 p-1">
+      {onShare && (
+        <IconButton
+          icon={Share2}
+          label={isSharing ? 'Sharing' : 'Share'}
+          size="sm"
+          isActive={isSharing}
+          onClick={onShare}
+        />
+      )}
+      <IconButton icon={Download} label="Export" size="sm" onClick={onExport} />
+      <IconButton icon={Keyboard} label="Shortcuts" shortcut="?" size="sm" onClick={onShortcuts} />
+      <IconButton icon={Settings} label="Settings" size="sm" onClick={onSettings} />
     </FloatingPill>
   );
 };

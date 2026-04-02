@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { FlowbaseCanvas, useCanvasStore, recalcBoundArrow, getAnchorPoints } from '@flowbase/canvas';
+import { FlowbaseCanvas, useCanvasStore, recalcBoundArrow, getAnchorPoints, useCollaboration } from '@flowbase/canvas';
 import type Konva from 'konva';
 import type { ToolType, AIActionType, AnchorPosition, Binding } from '@flowbase/shared';
 import { useAutoSave } from '@/hooks/useAutoSave';
@@ -22,6 +22,7 @@ import GenerateDialog from '../ai/GenerateDialog';
 import { parseLayoutResponse } from '@flowbase/ai';
 import type { LayoutPreviewPosition } from '@flowbase/canvas';
 import LayoutPreview from '../ai/LayoutPreview';
+import SharePopover from '../dialogs/SharePopover';
 
 interface AIPopoverInstance {
   id: string;
@@ -48,6 +49,7 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [settingsHint, setSettingsHint] = useState<string | undefined>();
   const [aiPopovers, setAiPopovers] = useState<AIPopoverInstance[]>([]);
   const [activePopoverId, setActivePopoverId] = useState<string | null>(null);
@@ -83,6 +85,8 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
   const distributeV = useCanvasStore((s) => s.distributeV);
   const pushHistory = useCanvasStore((s) => s.pushHistory);
   const setElements = useCanvasStore((s) => s.setElements);
+
+  const { isCollaborating } = useCollaboration();
 
   const { status: saveStatus, flushSave } = useAutoSave(projectId ?? '', stageRef, !isCollabMode);
 
@@ -609,8 +613,17 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
             setSettingsHint(undefined);
             setSettingsOpen(true);
           }}
+          onShare={() => setShareOpen(true)}
+          isSharing={isCollaborating}
         />
       </div>
+
+      {/* Share popover — anchored to top-right */}
+      {shareOpen && (
+        <div className="absolute right-4 top-16 z-20">
+          <SharePopover onClose={() => setShareOpen(false)} />
+        </div>
+      )}
 
       {/* Collaborator Bar — top-right, below action group */}
       <div className="absolute right-4 top-16 z-10">
