@@ -19,7 +19,7 @@ export default function CollaboratorBar({ onPanToUser }: CollaboratorBarProps) {
   const extraCount = remoteUsers.length - maxVisible
 
   return (
-    <div className="flex items-center gap-1 rounded-xl bg-white/90 px-2.5 py-1.5 shadow-sm backdrop-blur-sm border border-black/[0.06]">
+    <div className="flex items-center gap-1 rounded-[14px] border border-black/[0.06] bg-white/90 px-2.5 py-1.5 shadow-[0_0_0_0.5px_rgba(0,0,0,0.03),0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.06)] backdrop-blur-xl">
       {/* Connection status dot */}
       <div
         className={`h-2 w-2 rounded-full mr-1 ${
