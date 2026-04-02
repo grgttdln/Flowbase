@@ -43,10 +43,27 @@ RemoteCursor.displayName = 'RemoteCursor'
 
 interface RemoteCursorsProps {
   remoteUsers: RemoteUser[]
+  viewport?: { x: number; y: number; zoom: number; width: number; height: number }
 }
 
-const RemoteCursors = memo(({ remoteUsers }: RemoteCursorsProps) => {
-  const usersWithCursors = remoteUsers.filter((u) => u.cursor !== null)
+const RemoteCursors = memo(({ remoteUsers, viewport }: RemoteCursorsProps) => {
+  const usersWithCursors = remoteUsers.filter((u) => {
+    if (!u.cursor) return false
+    if (!viewport) return true
+    // Check if cursor is within the visible canvas area
+    const viewLeft = -viewport.x / viewport.zoom
+    const viewTop = -viewport.y / viewport.zoom
+    const viewRight = viewLeft + viewport.width / viewport.zoom
+    const viewBottom = viewTop + viewport.height / viewport.zoom
+    // Add generous padding (200px in canvas space) so cursors near edges don't pop in/out
+    const pad = 200
+    return (
+      u.cursor.x >= viewLeft - pad &&
+      u.cursor.x <= viewRight + pad &&
+      u.cursor.y >= viewTop - pad &&
+      u.cursor.y <= viewBottom + pad
+    )
+  })
 
   if (usersWithCursors.length === 0) return null
 

@@ -806,7 +806,10 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
         {awareness && (
           <Layer listening={false}>
             <RemoteSelections remoteUsers={remoteUsers} elements={elements} />
-            <RemoteCursors remoteUsers={remoteUsers} />
+            <RemoteCursors
+              remoteUsers={remoteUsers}
+              viewport={{ x: viewport.panX, y: viewport.panY, zoom: viewport.zoom, width, height }}
+            />
           </Layer>
         )}
         {/* Layout preview ghost layer */}
