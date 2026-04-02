@@ -21,11 +21,14 @@ export function handleConnection(conn: WebSocket, room: Room): void {
   // Send current awareness states
   const awarenessStates = room.awareness.getStates()
   if (awarenessStates.size > 0) {
-    const awarenessEncoder = awarenessProtocol.encodeAwarenessUpdate(
+    const awarenessUpdate = awarenessProtocol.encodeAwarenessUpdate(
       room.awareness,
       Array.from(awarenessStates.keys())
     )
-    conn.send(Buffer.from(awarenessEncoder))
+    const awarenessEncoder = encoding.createEncoder()
+    encoding.writeVarUint(awarenessEncoder, MESSAGE_AWARENESS)
+    encoding.writeVarUint8Array(awarenessEncoder, awarenessUpdate)
+    conn.send(encoding.toUint8Array(awarenessEncoder))
   }
 
   conn.on('message', (data: ArrayBuffer) => {

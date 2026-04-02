@@ -1,5 +1,6 @@
 import { Room } from './room.js'
 import type { RoomInfo } from './room.js'
+import type { WebSocket } from 'ws'
 
 class RoomManager {
   private rooms: Map<string, Room> = new Map()
@@ -37,15 +38,17 @@ class RoomManager {
     }
     room.isSharing = false
     console.log(`[room] sharing stopped: ${roomId}`)
-    // Close all non-owner connections
-    room.conns.forEach((_, conn) => {
+    // Remove all connections and clean up awareness before closing sockets
+    const connections = Array.from(room.conns.keys())
+    for (const conn of connections) {
+      room.removeConn(conn)
       conn.close(4001, 'Session ended by owner')
-    })
+    }
     this.destroyRoom(roomId)
     return true
   }
 
-  removeClientFromRoom(roomId: string, conn: import('ws').WebSocket): void {
+  removeClientFromRoom(roomId: string, conn: WebSocket): void {
     const room = this.rooms.get(roomId)
     if (!room) return
 

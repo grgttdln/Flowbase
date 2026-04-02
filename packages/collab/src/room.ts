@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import * as awarenessProtocol from 'y-protocols/awareness'
+import * as encoding from 'lib0/encoding'
 import type { WebSocket } from 'ws'
 
 export interface RoomInfo {
@@ -34,11 +35,14 @@ export class Room {
       removed: number[]
     }) => {
       const changedClients = added.concat(updated, removed)
-      const encoder = awarenessProtocol.encodeAwarenessUpdate(
+      const awarenessUpdate = awarenessProtocol.encodeAwarenessUpdate(
         this.awareness,
         changedClients
       )
-      const message = Buffer.from(encoder)
+      const encoder = encoding.createEncoder()
+      encoding.writeVarUint(encoder, 1) // MESSAGE_AWARENESS
+      encoding.writeVarUint8Array(encoder, awarenessUpdate)
+      const message = encoding.toUint8Array(encoder)
       this.conns.forEach((_, conn) => {
         if (conn.readyState === conn.OPEN) {
           conn.send(message)
