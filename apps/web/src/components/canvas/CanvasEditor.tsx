@@ -9,6 +9,7 @@ import { getAISettings } from '@/hooks/useAIAction';
 import ToolPicker from '../toolbar/ToolPicker';
 import LogoPill from '../toolbar/LogoPill';
 import ActionGroup from '../toolbar/ActionGroup';
+import CollaboratorBar from '../toolbar/CollaboratorBar';
 import ZoomControls from '../toolbar/ZoomControls';
 import SaveIndicator from '../toolbar/SaveIndicator';
 import ExportDialog from '../dialogs/ExportDialog';
@@ -17,7 +18,6 @@ import AIResponsePopover from '../ai/AIResponsePopover';
 import SettingsPanel from '../dialogs/SettingsPanel';
 import ShortcutsPanel from '../dialogs/ShortcutsPanel';
 import PropertiesSidebar from '../properties/PropertiesSidebar';
-import AlignmentToolbar from '../toolbar/AlignmentToolbar';
 import GenerateDialog from '../ai/GenerateDialog';
 import { parseLayoutResponse } from '@flowbase/ai';
 import type { LayoutPreviewPosition } from '@flowbase/canvas';
@@ -124,6 +124,9 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
       a: 'arrow',
       p: 'freehand',
       t: 'text',
+      s: 'stickynote',
+      k: 'laser',
+      e: 'eraser',
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -586,16 +589,19 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
 
       {/* Tool picker — center top */}
       <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2">
-        <ToolPicker activeTool={activeTool} onToolChange={setTool} />
-      </div>
-
-      {/* Actions — top right */}
-      <div className="absolute right-4 top-4 z-10">
-        <ActionGroup
+        <ToolPicker
+          activeTool={activeTool}
+          onToolChange={setTool}
           canUndo={canUndo()}
           canRedo={canRedo()}
           onUndo={undo}
           onRedo={redo}
+        />
+      </div>
+
+      {/* Secondary actions — top right */}
+      <div className="absolute right-4 top-4 z-10">
+        <ActionGroup
           onExport={() => setExportOpen(true)}
           onShortcuts={() => setShortcutsOpen(true)}
           onSettings={() => {
@@ -603,6 +609,11 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
             setSettingsOpen(true);
           }}
         />
+      </div>
+
+      {/* Collaborator Bar — top-right, below action group */}
+      <div className="absolute right-4 top-16 z-10">
+        <CollaboratorBar />
       </div>
 
       {/* Zoom — bottom left */}
@@ -622,8 +633,7 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
       {/* Properties sidebar */}
       <PropertiesSidebar />
 
-      {/* Alignment toolbar — above multi-selection */}
-      <AlignmentToolbar />
+      {/* Alignment actions available via context menu and keyboard shortcuts */}
 
       {/* Export dialog */}
       {exportOpen && (
@@ -670,9 +680,9 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
 
       {/* Layout loading indicator */}
       {isLayoutLoading && (
-        <div className="absolute bottom-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-white px-5 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)]">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#007AFF] border-t-transparent" />
-          <span className="text-[13px] font-medium text-[#666666]">Analyzing layout…</span>
+        <div className="absolute bottom-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-[14px] border border-black/[0.06] bg-white/90 px-5 py-3 shadow-[0_0_0_0.5px_rgba(0,0,0,0.03),0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.06)] backdrop-blur-xl">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
+          <span className="text-[13px] font-medium text-[#52525b]">Analyzing layout…</span>
         </div>
       )}
 
