@@ -14,7 +14,13 @@ import SelectionBox from './SelectionBox';
 import SnapGuides from './SnapGuides';
 import ConnectionPoints from './ConnectionPoints';
 import ArrowControls from './ArrowControls';
+import LaserLayer from './LaserLayer';
+import type { LaserTrail } from './LaserLayer';
 import { recalcBoundArrow, findNearestAnchor } from '../utils/connectors';
+import { useCollaboration } from '../collaboration/useCollaboration';
+import { usePresence } from '../collaboration/usePresence';
+import RemoteCursors from '../collaboration/RemoteCursors';
+import RemoteSelections from '../collaboration/RemoteSelections';
 
 export interface LayoutPreviewPosition {
   id: string;
@@ -71,6 +77,10 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
   const { onMouseDown, onMouseMove, onMouseUp, getCursor, getDrawingEndpoint, getSnappedAnchor } = useToolHandlers();
 
+  // Collaboration presence
+  const { awareness } = useCollaboration();
+  const { remoteUsers, updateCursor, clearCursor } = usePresence(awareness);
+
   // Space+drag panning
   const [isSpaceDown, setIsSpaceDown] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -95,6 +105,16 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
   // Text editing
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
+
+  // Laser pointer
+  const [laserTrails, setLaserTrails] = useState<LaserTrail[]>([]);
+  const laserIdCounter = useRef(0);
+  const isLaserDrawing = useRef(false);
+  const laserLastPoint = useRef<{ x: number; y: number } | null>(null);
+
+  // Eraser
+  const isErasing = useRef(false);
+  const erasedIds = useRef<Set<string>>(new Set());
 
   // Arrow endpoint dragging state
   const [draggingEndpoint, setDraggingEndpoint] = useState<{
@@ -186,6 +206,10 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
     };
   }, [viewport]);
 
+  const handleLaserCleanup = useCallback((expiredIds: number[]) => {
+    setLaserTrails((prev) => prev.filter((t) => !expiredIds.includes(t.id)));
+  }, []);
+
   const handleStageMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
     // Space + drag = pan
     if (isSpaceDown) {
@@ -199,6 +223,27 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
     const clickedOnEmpty = e.target === e.target.getStage();
 
+    if (activeTool === 'laser') {
+      const pos = getCanvasPos(e);
+      isLaserDrawing.current = true;
+      laserLastPoint.current = { x: pos.x, y: pos.y };
+      return;
+    }
+
+    if (activeTool === 'eraser') {
+      isErasing.current = true;
+      erasedIds.current = new Set();
+      if (!clickedOnEmpty) {
+        const targetId = e.target.id() || e.target.parent?.id();
+        if (targetId && targetId !== '__drawing__') {
+          pushHistory();
+          erasedIds.current.add(targetId);
+          deleteElements([targetId]);
+        }
+      }
+      return;
+    }
+
     if (activeTool === 'select') {
       if (clickedOnEmpty) {
         deselect();
@@ -211,9 +256,44 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
     const pos = getCanvasPos(e);
     onMouseDown(pos.x, pos.y);
-  }, [isSpaceDown, activeTool, viewport, deselect, getCanvasPos, onMouseDown]);
+  }, [isSpaceDown, activeTool, viewport, deselect, getCanvasPos, onMouseDown, pushHistory, deleteElements]);
 
   const handleStageMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+    // Eraser drag — delete elements as cursor passes over them
+    if (isErasing.current && activeTool === 'eraser') {
+      const stage = stageRef.current;
+      if (stage) {
+        const pos = stage.getPointerPosition();
+        if (pos) {
+          const shape = stage.getIntersection(pos);
+          if (shape) {
+            const targetId = shape.id() || shape.parent?.id();
+            if (targetId && targetId !== '__drawing__' && !erasedIds.current.has(targetId)) {
+              if (erasedIds.current.size === 0) pushHistory();
+              erasedIds.current.add(targetId);
+              deleteElements([targetId]);
+            }
+          }
+        }
+      }
+      return;
+    }
+
+    // Laser drawing — emit a segment from previous point to current point
+    if (isLaserDrawing.current && activeTool === 'laser') {
+      const pos = getCanvasPos(e);
+      const prev = laserLastPoint.current;
+      if (prev) {
+        const id = ++laserIdCounter.current;
+        setLaserTrails((trails) => [
+          ...trails,
+          { id, points: [prev.x, prev.y, pos.x, pos.y], createdAt: performance.now() },
+        ]);
+      }
+      laserLastPoint.current = { x: pos.x, y: pos.y };
+      return;
+    }
+
     // Pan — manipulate Konva stage directly for smooth 60fps panning
     if (isPanning && panStart.current) {
       const pos = stageRef.current?.getPointerPosition();
@@ -258,9 +338,24 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
     const pos = getCanvasPos(e);
     onMouseMove(pos.x, pos.y);
-  }, [isPanning, selectionBox, activeTool, getCanvasPos, onMouseMove, setViewport, select]);
+
+    // Broadcast cursor position for collaboration
+    updateCursor(pos.x, pos.y);
+  }, [isPanning, selectionBox, activeTool, getCanvasPos, onMouseMove, setViewport, select, pushHistory, deleteElements, updateCursor]);
 
   const handleStageMouseUp = useCallback(() => {
+    if (isLaserDrawing.current) {
+      isLaserDrawing.current = false;
+      laserLastPoint.current = null;
+      return;
+    }
+
+    if (isErasing.current) {
+      isErasing.current = false;
+      erasedIds.current = new Set();
+      return;
+    }
+
     if (isPanning) {
       // Sync final pan position to Zustand store
       if (panStart.current && panStart.current.lastPanX != null) {
@@ -423,7 +518,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
   const handleTextDblClick = useCallback((id: string) => {
     const element = elementsRef.current.find((el) => el.id === id);
     if (!element) return;
-    const editableTypes = ['text', 'rectangle', 'ellipse', 'diamond'];
+    const editableTypes = ['text', 'rectangle', 'ellipse', 'diamond', 'stickynote'];
     if (!editableTypes.includes(element.type)) return;
 
     setEditingTextId(id);
@@ -442,14 +537,17 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
     input.style.left = `${nodeRect.x}px`;
     input.style.width = `${Math.max(nodeRect.width, 100)}px`;
     input.style.height = `${Math.max(nodeRect.height, 30)}px`;
+    const isNote = element.type === 'stickynote';
     input.style.fontSize = `${(element.fontSize ?? (element.type === 'text' ? 16 : 14)) * viewport.zoom}px`;
-    input.style.textAlign = element.type === 'text' ? 'left' : 'center';
-    input.style.border = '2px solid #007AFF';
-    input.style.borderRadius = '4px';
-    input.style.padding = '2px 4px';
+    input.style.textAlign = element.type === 'text' || isNote ? 'left' : 'center';
+    input.style.border = '2px solid #7c3aed';
+    input.style.borderRadius = isNote ? '3px' : '4px';
+    input.style.padding = isNote ? `${12 * viewport.zoom}px` : '2px 4px';
     input.style.outline = 'none';
     input.style.resize = 'none';
-    input.style.background = 'white';
+    input.style.background = isNote ? (element.fill || '#fef08a') : 'white';
+    input.style.color = isNote ? (element.stroke || '#713f12') : 'inherit';
+    input.style.lineHeight = isNote ? '1.4' : 'normal';
     input.style.fontFamily = '-apple-system, BlinkMacSystemFont, sans-serif';
     input.style.zIndex = '1000';
 
@@ -600,7 +698,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
   );
 
   return (
-    <div style={{ cursor, width, height }}>
+    <div className="canvas-cursor" style={{ '--canvas-cursor': cursor, width, height } as React.CSSProperties}>
       <Stage
         ref={stageRef}
         width={width}
@@ -614,6 +712,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
         onMouseUp={handleStageMouseUp}
         onWheel={handleWheel}
         onContextMenu={handleContextMenu}
+        onMouseLeave={clearCursor}
       >
         <Layer listening={false}>
           <GridLayer
@@ -697,8 +796,18 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
               height={selectionBox.height}
             />
           )}
+          {laserTrails.length > 0 && (
+            <LaserLayer trails={laserTrails} onCleanup={handleLaserCleanup} />
+          )}
           <SelectionLayer stageRef={stageRef} />
         </Layer>
+        {/* Remote presence layer */}
+        {remoteUsers.length > 0 && (
+          <Layer listening={false}>
+            <RemoteSelections remoteUsers={remoteUsers} elements={elements} />
+            <RemoteCursors remoteUsers={remoteUsers} />
+          </Layer>
+        )}
         {/* Layout preview ghost layer */}
         {layoutPreview && layoutPreview.length > 0 && (
           <Layer listening={false}>

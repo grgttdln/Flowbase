@@ -1,4 +1,8 @@
 export { CollaborationProvider, CollabContext } from './CollaborationProvider'
 export { useCollaboration } from './useCollaboration'
 export { initYDocFromStore, initStoreFromYDoc, startSync, getIsRemoteUpdate } from './yjsSync'
+export { usePresence, type RemoteUser, type PresenceState } from './usePresence'
+export { default as RemoteCursors } from './RemoteCursors'
+export { default as RemoteSelections } from './RemoteSelections'
+export { PRESENCE_COLORS, PRESENCE_COLOR_NAMES, ANIMAL_NAMES, getPresenceColor, getPresenceName } from './constants'
 export type { CollabState, CollabContextValue, ConnectionStatus } from './types'
