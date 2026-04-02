@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useEffect, useRef, useState } from '
 import * as Y from 'yjs'
 // @ts-expect-error y-websocket has no types
 import { WebsocketProvider } from 'y-websocket'
+import type { Awareness } from 'y-protocols/awareness'
 import { useCanvasStore } from '../store/useCanvasStore'
 import { initYDocFromStore, initStoreFromYDoc, startSync } from './yjsSync'
 import type { CollabContextValue, ConnectionStatus } from './types'
@@ -32,6 +33,7 @@ export function CollaborationProvider({
   const [roomId, setRoomId] = useState<string | null>(initialRoomId ?? null)
   const [status, setStatus] = useState<ConnectionStatus>('disconnected')
   const [doc, setDoc] = useState<Y.Doc | null>(null)
+  const [awareness, setAwareness] = useState<Awareness | null>(null)
 
   const providerRef = useRef<WebsocketProvider | null>(null)
   const cleanupSyncRef = useRef<(() => void) | null>(null)
@@ -63,6 +65,7 @@ export function CollaborationProvider({
         ydoc,
       )
       providerRef.current = wsProvider
+      setAwareness(wsProvider.awareness)
 
       wsProvider.on('status', ({ status: wsStatus }: { status: string }) => {
         if (wsStatus === 'connected') {
@@ -101,6 +104,7 @@ export function CollaborationProvider({
       docRef.current = null
     }
     setDoc(null)
+    setAwareness(null)
     setRoomId(null)
     setStatus('disconnected')
   }, [])
@@ -120,7 +124,7 @@ export function CollaborationProvider({
     roomId,
     status,
     doc,
-    awareness: providerRef.current?.awareness ?? null,
+    awareness,
     startCollaboration,
     stopCollaboration,
   }

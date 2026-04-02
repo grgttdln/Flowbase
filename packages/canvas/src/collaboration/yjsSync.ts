@@ -34,17 +34,10 @@ function elementToYMap(element: Element): Y.Map<unknown> {
 function yMapToElement(yMap: Y.Map<unknown>): Element {
   const obj: Record<string, unknown> = {}
   yMap.forEach((value, key) => {
-    if (typeof value === 'string') {
-      if (
-        (key === 'points' || key === 'startBinding' || key === 'endBinding') &&
-        (value.startsWith('[') || value.startsWith('{'))
-      ) {
-        try {
-          obj[key] = JSON.parse(value)
-        } catch {
-          obj[key] = value
-        }
-      } else {
+    if (typeof value === 'string' && (value.startsWith('[') || value.startsWith('{'))) {
+      try {
+        obj[key] = JSON.parse(value)
+      } catch {
         obj[key] = value
       }
     } else {
@@ -88,8 +81,11 @@ export function initStoreFromYDoc(
   })
 
   isRemoteUpdate = true
-  store.getState().setElements(elements)
-  isRemoteUpdate = false
+  try {
+    store.getState().setElements(elements)
+  } finally {
+    isRemoteUpdate = false
+  }
 }
 
 /**
@@ -155,14 +151,14 @@ export function startSync(
           elementsMap.delete(id)
         }
       }
-    })
+    }, 'local')
 
     prevElements = nextElements
   })
 
   // --- Yjs → Zustand ---
-  const observer = () => {
-    if (isRemoteUpdate) return
+  const observer = (_events: Y.YEvent<any>[], transaction: Y.Transaction) => {
+    if (transaction.origin === 'local') return
 
     const elements: Element[] = []
     elementsMap.forEach((value, _key) => {
@@ -171,11 +167,14 @@ export function startSync(
       }
     })
 
-    elements.sort((a, b) => a.zIndex - b.zIndex)
+    elements.sort((a, b) => a.zIndex - b.zIndex || a.id.localeCompare(b.id))
 
     isRemoteUpdate = true
-    store.getState().setElements(elements)
-    isRemoteUpdate = false
+    try {
+      store.getState().setElements(elements)
+    } finally {
+      isRemoteUpdate = false
+    }
 
     prevElements = store.getState().elements
   }
