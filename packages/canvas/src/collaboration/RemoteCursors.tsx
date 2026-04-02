@@ -2,7 +2,7 @@ import React, { memo } from 'react'
 import { Group, Path, Label, Tag, Text } from 'react-konva'
 import type { RemoteUser } from './usePresence'
 
-const CURSOR_PATH = 'M0 0 L16 10.5 L8.5 10.5 L8.5 18 L0 18 Z'
+const CURSOR_PATH = 'M0 0 L0 17 L4.8 13.2 L8.8 20 L11.2 18.8 L7.2 12 L13 12 Z'
 
 interface RemoteCursorProps {
   user: RemoteUser
