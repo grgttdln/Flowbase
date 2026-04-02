@@ -23,7 +23,15 @@ export type { AnchorPoint } from './utils/connectors';
 export {
   CollaborationProvider,
   useCollaboration,
+  usePresence,
+  RemoteCursors,
+  RemoteSelections,
+  PRESENCE_COLORS,
+  getPresenceColor,
+  getPresenceName,
   type CollabState,
   type CollabContextValue,
   type ConnectionStatus,
+  type RemoteUser,
+  type PresenceState,
 } from './collaboration';
