@@ -9,6 +9,7 @@ export interface CollabState {
   status: ConnectionStatus
   doc: Y.Doc | null
   awareness: Awareness | null
+  sessionEnded: boolean
 }
 
 export interface CollabContextValue extends CollabState {

@@ -15,6 +15,7 @@ export const CollabContext = createContext<CollabContextValue>({
   status: 'disconnected',
   doc: null,
   awareness: null,
+  sessionEnded: false,
   startCollaboration: () => {},
   stopCollaboration: () => {},
 })
@@ -34,6 +35,7 @@ export function CollaborationProvider({
   const [status, setStatus] = useState<ConnectionStatus>('disconnected')
   const [doc, setDoc] = useState<Y.Doc | null>(null)
   const [awareness, setAwareness] = useState<Awareness | null>(null)
+  const [sessionEnded, setSessionEnded] = useState(false)
 
   const providerRef = useRef<WebsocketProvider | null>(null)
   const cleanupSyncRef = useRef<(() => void) | null>(null)
@@ -45,6 +47,8 @@ export function CollaborationProvider({
       if (cleanupSyncRef.current) cleanupSyncRef.current()
       if (providerRef.current) providerRef.current.destroy()
       if (docRef.current) docRef.current.destroy()
+
+      setSessionEnded(false)
 
       const ydoc = new Y.Doc()
       docRef.current = ydoc
@@ -72,6 +76,19 @@ export function CollaborationProvider({
           setStatus('connected')
         } else if (wsStatus === 'disconnected') {
           setStatus('disconnected')
+          // Check if room still exists after a brief delay (allows for reconnect)
+          setTimeout(async () => {
+            if (providerRef.current?.wsconnected) return
+            try {
+              const httpUrl = COLLAB_SERVER_URL.replace(/^ws(s?)/, 'http$1')
+              const res = await fetch(`${httpUrl}/rooms/${newRoomId}`)
+              if (!res.ok) {
+                setSessionEnded(true)
+              }
+            } catch {
+              // Network error — don't assume session ended
+            }
+          }, 2000)
         } else {
           setStatus('connecting')
         }
@@ -125,6 +142,7 @@ export function CollaborationProvider({
     status,
     doc,
     awareness,
+    sessionEnded,
     startCollaboration,
     stopCollaboration,
   }
