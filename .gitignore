@@ -13,6 +13,7 @@ dist/
 
 # Superpowers
 .superpowers/
+docs/superpowers/
 
 # Worktrees
 .worktrees/
