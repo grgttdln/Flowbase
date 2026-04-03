@@ -35,9 +35,12 @@ export function getAnchorPosition(el: Element, anchor: AnchorPosition): { x: num
   }
 }
 
+/** Element types that can have connection points */
+export const CONNECTABLE_TYPES = new Set(['rectangle', 'ellipse', 'diamond', 'text', 'stickynote']);
+
 /** Check if an element type can have connection points */
 function isConnectable(type: string): boolean {
-  return type === 'rectangle' || type === 'ellipse' || type === 'diamond' || type === 'text' || type === 'stickynote';
+  return CONNECTABLE_TYPES.has(type);
 }
 
 /** Find the nearest anchor point to a given position, within snap threshold */

@@ -1,6 +1,6 @@
 import { Circle } from 'react-konva';
 import type { Element } from '@flowbase/shared';
-import { getAnchorPoints } from '../utils/connectors';
+import { getAnchorPoints, CONNECTABLE_TYPES } from '../utils/connectors';
 
 interface ConnectionPointsProps {
   elements: Element[];
@@ -20,10 +20,8 @@ const ConnectionPoints = ({
   threshold = 80,
   snappedAnchor,
 }: ConnectionPointsProps) => {
-  const connectableTypes = new Set(['rectangle', 'ellipse', 'diamond', 'text', 'stickynote']);
-
   const nearbyElements = elements.filter((el) => {
-    if (!connectableTypes.has(el.type)) return false;
+    if (!CONNECTABLE_TYPES.has(el.type)) return false;
     if (nearX == null || nearY == null) return false;
     const cx = el.x + el.width / 2;
     const cy = el.y + el.height / 2;
