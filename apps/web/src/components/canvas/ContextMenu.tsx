@@ -10,10 +10,9 @@ import {
   ArrowUp,
   ArrowDown,
   Sparkles,
-  MessageSquare,
-  Lightbulb,
-  FileText,
-  Wand2,
+  BookOpen,
+  Workflow,
+  AlignLeft,
   AlignStartVertical,
   AlignCenterVertical,
   AlignEndVertical,
@@ -58,10 +57,10 @@ interface MenuItem {
 }
 
 const MENU_ITEMS: (MenuItem | 'divider')[] = [
-  { action: 'generate', label: 'Generate Diagram', icon: Wand2, isAI: true },
-  { action: 'explain', label: 'Explain', icon: MessageSquare, isAI: true, needsSelection: true },
-  { action: 'suggest', label: 'Suggest improvements', icon: Lightbulb, isAI: true, needsSelection: true },
-  { action: 'summarize', label: 'Summarize', icon: FileText, isAI: true },
+  { action: 'generate', label: 'Generate Diagram', icon: Workflow, isAI: true },
+  { action: 'explain', label: 'Explain', icon: BookOpen, isAI: true, needsSelection: true },
+  { action: 'suggest', label: 'Suggest improvements', icon: Sparkles, isAI: true, needsSelection: true },
+  { action: 'summarize', label: 'Summarize', icon: AlignLeft, isAI: true },
   'divider',
   { action: 'copy', label: 'Copy', icon: Copy, shortcut: '⌘C', needsSelection: true },
   { action: 'paste', label: 'Paste', icon: ClipboardPaste, shortcut: '⌘V' },
@@ -182,11 +181,7 @@ const ContextMenu = ({ x, y, hasSelection, selectionCount, elementCount = 0, onA
                 : 'text-[#18181b] hover:bg-black/[0.04]'
             }`}
           >
-            {isAI ? (
-              <Sparkles size={15} className="shrink-0" />
-            ) : (
-              <Icon size={15} className="shrink-0 text-[#52525b]" />
-            )}
+            <Icon size={15} className={`shrink-0 ${isAI ? '' : 'text-[#52525b]'}`} />
             <span className="flex-1 text-left">{item.label}</span>
             {item.shortcut && (
               <span className="text-[11px] text-[#a1a1aa]">{item.shortcut}</span>

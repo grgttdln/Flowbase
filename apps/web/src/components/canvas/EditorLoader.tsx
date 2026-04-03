@@ -49,7 +49,7 @@ const EditorLoader = ({ projectId }: EditorLoaderProps) => {
 
   return (
     <CollaborationProvider>
-      <CanvasEditor projectId={projectId} projectName={project!.name} />
+      <CanvasEditor projectId={projectId} projectName={project!.name} savedAIPopovers={project!.aiPopovers} />
     </CollaborationProvider>
   );
 };

@@ -4,7 +4,7 @@ export type { SerializedScene } from './types/scene';
 export type { Project } from './types/project';
 export type { ToolType } from './types/tools';
 export type { Viewport } from './types/viewport';
-export type { AIRequest, AIActionType, ChatMessage } from './types/ai';
+export type { AIRequest, AIActionType, ChatMessage, SavedAIPopover } from './types/ai';
 
 // Constants
 export { UI_COLORS, SHAPE_COLORS, DEFAULT_STROKE, DEFAULT_FILL } from './constants/colors';

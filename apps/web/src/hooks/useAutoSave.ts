@@ -1,12 +1,18 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import type Konva from 'konva';
 import { useCanvasStore } from '@flowbase/canvas';
+import type { SavedAIPopover } from '@flowbase/shared';
 import { AUTO_SAVE_DEBOUNCE_MS } from '@flowbase/shared';
 import { getProject, saveProject } from '@/lib/db';
 
 export type SaveStatus = 'saved' | 'saving' | 'error';
 
-export function useAutoSave(projectId: string, stageRef: React.RefObject<Konva.Stage | null>, enabled = true) {
+export function useAutoSave(
+  projectId: string,
+  stageRef: React.RefObject<Konva.Stage | null>,
+  enabled = true,
+  aiPopoversRef?: React.RefObject<SavedAIPopover[]>,
+) {
   const [status, setStatus] = useState<SaveStatus>('saved');
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSave = useRef(false);
@@ -28,17 +34,20 @@ export function useAutoSave(projectId: string, stageRef: React.RefObject<Konva.S
         }
       }
 
+      const aiPopovers = aiPopoversRef?.current;
+
       await saveProject({
         ...project,
         scene: { version: 1, elements },
         thumbnail,
         updatedAt: Date.now(),
+        ...(aiPopovers && aiPopovers.length > 0 ? { aiPopovers } : { aiPopovers: undefined }),
       });
       setStatus('saved');
     } catch {
       setStatus('error');
     }
-  }, [projectId, stageRef]);
+  }, [projectId, stageRef, aiPopoversRef]);
 
   const scheduleSave = useCallback(() => {
     pendingSave.current = true;
@@ -77,5 +86,5 @@ export function useAutoSave(projectId: string, stageRef: React.RefObject<Konva.S
     };
   }, [scheduleSave, doSave, enabled]);
 
-  return { status, flushSave };
+  return { status, flushSave, scheduleSave };
 }

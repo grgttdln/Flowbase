@@ -1,4 +1,5 @@
 import type { SerializedScene } from './scene';
+import type { SavedAIPopover } from './ai';
 
 export interface Project {
   id: string;
@@ -8,4 +9,5 @@ export interface Project {
   createdAt: number;
   updatedAt: number;
   deletedAt: number | null;
+  aiPopovers?: SavedAIPopover[];
 }

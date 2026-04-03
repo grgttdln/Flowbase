@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Copy, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Copy, RotateCcw, ChevronUp, Workflow, BookOpen, Sparkles, AlignLeft } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { AIActionType } from '@flowbase/shared';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -9,10 +10,17 @@ import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github.css';
 
 const ACTION_LABELS: Record<AIActionType, string> = {
-  explain: 'AI: Explain',
-  suggest: 'AI: Suggest',
-  summarize: 'AI: Summarize',
-  generate: 'AI: Generate',
+  explain: 'Explain',
+  suggest: 'Suggest',
+  summarize: 'Summarize',
+  generate: 'Generate',
+};
+
+const ACTION_ICONS: Record<AIActionType, LucideIcon> = {
+  explain: BookOpen,
+  suggest: Sparkles,
+  summarize: AlignLeft,
+  generate: Workflow,
 };
 
 export interface AIResponsePopoverProps {
@@ -98,13 +106,11 @@ const AIResponsePopover = ({
     }
   };
 
-  const preview = text ? text.slice(0, 60) + (text.length > 60 ? '...' : '') : '';
-
   return (
     <div
       role="dialog"
       aria-label={ACTION_LABELS[action]}
-      className="fixed w-[360px] rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)]"
+      className={`fixed rounded-2xl bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)] transition-[width] duration-200 ${collapsed ? 'w-auto' : 'w-[360px]'}`}
       style={{
         left: x,
         top: y,
@@ -115,33 +121,52 @@ const AIResponsePopover = ({
     >
       {/* Header — drag handle */}
       <div
-        className={`flex items-center gap-2 border-b border-[#e4e4e7] px-4 py-2.5 ${
+        className={`flex items-center gap-2 ${collapsed ? 'px-2 py-2' : 'border-b border-[#e4e4e7] px-4 py-2.5'} ${
           dragging ? 'cursor-grabbing' : 'cursor-grab'
         }`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
-        <span className="flex-1 truncate text-[13px] font-semibold text-[#7c3aed]">
-          {ACTION_LABELS[action]}
-          {collapsed && preview && (
-            <span className="ml-1.5 font-normal text-[#a1a1aa]">— {preview}</span>
-          )}
-        </span>
-        <button
-          onClick={() => onToggleCollapse(id)}
-          className="rounded-md p-1 text-[#a1a1aa] transition-colors hover:bg-black/[0.04] hover:text-[#52525b]"
-          aria-label={collapsed ? 'Expand' : 'Collapse'}
-        >
-          {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-        </button>
-        <button
-          onClick={() => onClose(id)}
-          className="rounded-md p-1 text-[#a1a1aa] transition-colors hover:bg-black/[0.04] hover:text-[#52525b]"
-          aria-label="Close"
-        >
-          <X size={14} />
-        </button>
+        {collapsed ? (
+          <>
+            <button
+              onClick={() => onToggleCollapse(id)}
+              className="rounded-lg p-1.5 text-[#7c3aed] transition-colors hover:bg-[rgba(124,58,237,0.06)]"
+              aria-label="Expand"
+            >
+              {(() => { const Icon = ACTION_ICONS[action]; return <Icon size={16} />; })()}
+            </button>
+            <button
+              onClick={() => onClose(id)}
+              className="rounded-md p-1 text-[#a1a1aa] transition-colors hover:bg-black/[0.04] hover:text-[#52525b]"
+              aria-label="Close"
+            >
+              <X size={14} />
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="flex items-center gap-1.5 flex-1 truncate text-[13px] font-semibold text-[#7c3aed]">
+              {(() => { const Icon = ACTION_ICONS[action]; return <Icon size={14} className="shrink-0" />; })()}
+              {ACTION_LABELS[action]}
+            </span>
+            <button
+              onClick={() => onToggleCollapse(id)}
+              className="rounded-md p-1 text-[#a1a1aa] transition-colors hover:bg-black/[0.04] hover:text-[#52525b]"
+              aria-label="Collapse"
+            >
+              <ChevronUp size={14} />
+            </button>
+            <button
+              onClick={() => onClose(id)}
+              className="rounded-md p-1 text-[#a1a1aa] transition-colors hover:bg-black/[0.04] hover:text-[#52525b]"
+              aria-label="Close"
+            >
+              <X size={14} />
+            </button>
+          </>
+        )}
       </div>
 
       {/* Collapsible content */}

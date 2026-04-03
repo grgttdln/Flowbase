@@ -12,3 +12,14 @@ export interface AIRequest {
   scene: SerializedScene;
   selectedIds?: string[];
 }
+
+/** Persistable AI popover data (excludes runtime fields like isLoading/error). */
+export interface SavedAIPopover {
+  id: string;
+  x: number;
+  y: number;
+  action: AIActionType;
+  text: string;
+  collapsed: boolean;
+  selectedIds?: string[];
+}

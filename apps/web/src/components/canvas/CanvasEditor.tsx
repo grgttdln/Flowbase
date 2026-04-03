@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { FlowbaseCanvas, useCanvasStore, useCollaboration } from '@flowbase/canvas';
 import type Konva from 'konva';
-import type { ToolType, AIActionType } from '@flowbase/shared';
+import type { ToolType, AIActionType, SavedAIPopover } from '@flowbase/shared';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { getAISettings } from '@/hooks/useAIAction';
 import ToolPicker from '../toolbar/ToolPicker';
@@ -36,9 +36,10 @@ interface AIPopoverInstance {
 interface CanvasEditorProps {
   projectId?: string;
   projectName: string;
+  savedAIPopovers?: SavedAIPopover[];
 }
 
-const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
+const CanvasEditor = ({ projectId, projectName, savedAIPopovers }: CanvasEditorProps) => {
   const isCollabMode = !projectId;
   const stageRef = useRef<Konva.Stage>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -48,8 +49,11 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
   const [generateOpen, setGenerateOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [settingsHint, setSettingsHint] = useState<string | undefined>();
-  const [aiPopovers, setAiPopovers] = useState<AIPopoverInstance[]>([]);
+  const [aiPopovers, setAiPopovers] = useState<AIPopoverInstance[]>(() =>
+    (savedAIPopovers ?? []).map((p) => ({ ...p, isLoading: false, error: null })),
+  );
   const [activePopoverId, setActivePopoverId] = useState<string | null>(null);
+  const aiPopoversRef = useRef<SavedAIPopover[]>([]);
   const abortControllers = useRef<Map<string, AbortController>>(new Map());
   const activeTool = useCanvasStore((s) => s.activeTool);
   const setTool = useCanvasStore((s) => s.setTool);
@@ -78,7 +82,27 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
   const distributeV = useCanvasStore((s) => s.distributeV);
   const { isCollaborating, status: collabStatus, roomId: collabRoomId } = useCollaboration();
 
-  const { status: saveStatus, flushSave } = useAutoSave(projectId ?? '', stageRef, !isCollabMode);
+  // Keep ref in sync for auto-save (avoids re-creating the save callback on every popover change)
+  useEffect(() => {
+    aiPopoversRef.current = aiPopovers
+      .filter((p) => p.text && !p.isLoading)
+      .map(({ id, x, y, action, text, collapsed, selectedIds: sids }) => ({
+        id, x, y, action, text, collapsed, selectedIds: sids,
+      }));
+  }, [aiPopovers]);
+
+  const { status: saveStatus, flushSave, scheduleSave } = useAutoSave(projectId ?? '', stageRef, !isCollabMode, aiPopoversRef);
+
+  // Trigger auto-save when popovers change (close, collapse, move, stream complete)
+  const prevPopoversLenRef = useRef(aiPopovers.length);
+  useEffect(() => {
+    const hasFinished = aiPopovers.every((p) => !p.isLoading);
+    const countChanged = aiPopovers.length !== prevPopoversLenRef.current;
+    prevPopoversLenRef.current = aiPopovers.length;
+    if (hasFinished || countChanged) {
+      scheduleSave();
+    }
+  }, [aiPopovers, scheduleSave]);
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; elementId?: string } | null>(null);
 
@@ -230,10 +254,14 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
     (action: AIActionType, menuX: number, menuY: number) => {
       const ids = Array.from(selectedIds);
       const popoverId = crypto.randomUUID();
+      // Convert screen coordinates to canvas space so popovers pan/zoom with elements
+      const { viewport: vp } = useCanvasStore.getState();
+      const canvasX = (menuX - vp.panX) / vp.zoom;
+      const canvasY = (menuY + 8 - vp.panY) / vp.zoom;
       const instance: AIPopoverInstance = {
         id: popoverId,
-        x: menuX,
-        y: menuY + 8,
+        x: canvasX,
+        y: canvasY,
         action,
         text: '',
         isLoading: true,
@@ -271,8 +299,12 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
     [aiPopovers, streamToPopover],
   );
 
-  const handleMovePopover = useCallback((id: string, x: number, y: number) => {
-    setAiPopovers((prev) => prev.map((p) => (p.id === id ? { ...p, x, y } : p)));
+  const handleMovePopover = useCallback((id: string, screenX: number, screenY: number) => {
+    // Convert screen coordinates back to canvas space
+    const { viewport: vp } = useCanvasStore.getState();
+    const canvasX = (screenX - vp.panX) / vp.zoom;
+    const canvasY = (screenY - vp.panY) / vp.zoom;
+    setAiPopovers((prev) => prev.map((p) => (p.id === id ? { ...p, x: canvasX, y: canvasY } : p)));
   }, []);
 
   const handleToggleCollapse = useCallback((id: string) => {
@@ -451,26 +483,30 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
         />
       )}
 
-      {/* AI Response Popovers */}
-      {aiPopovers.map((popover) => (
-        <AIResponsePopover
-          key={popover.id}
-          id={popover.id}
-          x={popover.x}
-          y={popover.y}
-          action={popover.action}
-          text={popover.text}
-          isLoading={popover.isLoading}
-          error={popover.error}
-          collapsed={popover.collapsed}
-          isActive={popover.id === activePopoverId}
-          onClose={handleClosePopover}
-          onRetry={handleRetryPopover}
-          onMove={handleMovePopover}
-          onToggleCollapse={handleToggleCollapse}
-          onActivate={handleActivatePopover}
-        />
-      ))}
+      {/* AI Response Popovers — positioned in canvas space */}
+      {aiPopovers.map((popover) => {
+        const screenX = popover.x * viewport.zoom + viewport.panX;
+        const screenY = popover.y * viewport.zoom + viewport.panY;
+        return (
+          <AIResponsePopover
+            key={popover.id}
+            id={popover.id}
+            x={screenX}
+            y={screenY}
+            action={popover.action}
+            text={popover.text}
+            isLoading={popover.isLoading}
+            error={popover.error}
+            collapsed={popover.collapsed}
+            isActive={popover.id === activePopoverId}
+            onClose={handleClosePopover}
+            onRetry={handleRetryPopover}
+            onMove={handleMovePopover}
+            onToggleCollapse={handleToggleCollapse}
+            onActivate={handleActivatePopover}
+          />
+        );
+      })}
 
       {/* Generate Diagram dialog */}
       <GenerateDialog
