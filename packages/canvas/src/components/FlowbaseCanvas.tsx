@@ -248,6 +248,13 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
     }
 
     const pos = getCanvasPos(e);
+
+    // Only create new elements when clicking on empty canvas
+    if (!clickedOnEmpty) {
+      // Clicked on an existing element — let Konva shape handlers handle selection
+      return;
+    }
+
     onMouseDown(pos.x, pos.y);
   }, [isSpaceDown, activeTool, viewport, deselect, getCanvasPos, onMouseDown, pushHistory, deleteElements]);
 
