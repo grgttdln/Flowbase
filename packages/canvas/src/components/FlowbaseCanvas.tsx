@@ -22,18 +22,11 @@ import { usePresence } from '../collaboration/usePresence';
 import RemoteCursors from '../collaboration/RemoteCursors';
 import RemoteSelections from '../collaboration/RemoteSelections';
 
-export interface LayoutPreviewPosition {
-  id: string;
-  x: number;
-  y: number;
-}
-
 interface FlowbaseCanvasProps {
   width: number;
   height: number;
   stageRef?: React.RefObject<Konva.Stage | null>;
   onContextMenu?: (e: { x: number; y: number; elementId?: string }) => void;
-  layoutPreview?: LayoutPreviewPosition[] | null;
 }
 
 const NOOP = () => {};
@@ -41,7 +34,7 @@ const NOOP_SELECT = (_id: string, _shift: boolean) => {};
 const NOOP_DRAG_MOVE = (_id: string, _x: number, _y: number) => {};
 const NOOP_DRAG = (_id: string) => {};
 
-const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMenu, layoutPreview }: FlowbaseCanvasProps) => {
+const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMenu }: FlowbaseCanvasProps) => {
   const internalStageRef = useRef<Konva.Stage>(null);
   const stageRef = externalStageRef ?? internalStageRef;
   const elements = useCanvasStore((s) => s.elements);
@@ -431,7 +424,6 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
 
   // Element event handlers
   const handleSelect = useCallback((id: string, shiftKey: boolean) => {
-    if (activeTool !== 'select') return;
     if (shiftKey) {
       toggleSelection(id);
     } else {
@@ -443,7 +435,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
         select([id]);
       }
     }
-  }, [activeTool, select, toggleSelection]);
+  }, [select, toggleSelection]);
 
   const handleDragStart = useCallback((id: string) => {
     if (!dragStarted.current) {
@@ -815,83 +807,6 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
               remoteUsers={remoteUsers}
               viewport={cursorViewport}
             />
-          </Layer>
-        )}
-        {/* Layout preview ghost layer */}
-        {layoutPreview && layoutPreview.length > 0 && (
-          <Layer listening={false}>
-            {layoutPreview.map((pos) => {
-              const el = elements.find((e) => e.id === pos.id);
-              if (!el) return null;
-
-              const currentCenterX = el.x + el.width / 2;
-              const currentCenterY = el.y + el.height / 2;
-              const newCenterX = pos.x + el.width / 2;
-              const newCenterY = pos.y + el.height / 2;
-
-              return (
-                <Group key={`ghost-${pos.id}`}>
-                  {/* Movement line */}
-                  <Line
-                    points={[currentCenterX, currentCenterY, newCenterX, newCenterY]}
-                    stroke="#228BE6"
-                    strokeWidth={1}
-                    dash={[4, 4]}
-                    opacity={0.4}
-                  />
-                  {/* Ghost shape */}
-                  {el.type === 'ellipse' ? (
-                    <Ellipse
-                      x={pos.x + el.width / 2}
-                      y={pos.y + el.height / 2}
-                      radiusX={el.width / 2}
-                      radiusY={el.height / 2}
-                      stroke="#228BE6"
-                      strokeWidth={2}
-                      dash={[6, 4]}
-                      opacity={0.3}
-                    />
-                  ) : el.type === 'diamond' ? (
-                    <Line
-                      points={[
-                        pos.x + el.width / 2, pos.y,
-                        pos.x + el.width, pos.y + el.height / 2,
-                        pos.x + el.width / 2, pos.y + el.height,
-                        pos.x, pos.y + el.height / 2,
-                      ]}
-                      closed
-                      stroke="#228BE6"
-                      strokeWidth={2}
-                      dash={[6, 4]}
-                      opacity={0.3}
-                    />
-                  ) : el.type === 'text' ? (
-                    <Text
-                      x={pos.x}
-                      y={pos.y}
-                      width={el.width}
-                      height={el.height}
-                      text={el.text ?? ''}
-                      fontSize={el.fontSize ?? 16}
-                      fill="#228BE6"
-                      opacity={0.3}
-                    />
-                  ) : (
-                    <Rect
-                      x={pos.x}
-                      y={pos.y}
-                      width={el.width}
-                      height={el.height}
-                      stroke="#228BE6"
-                      strokeWidth={2}
-                      dash={[6, 4]}
-                      opacity={0.3}
-                      cornerRadius={el.type === 'rectangle' ? 4 : 0}
-                    />
-                  )}
-                </Group>
-              );
-            })}
           </Layer>
         )}
       </Stage>
