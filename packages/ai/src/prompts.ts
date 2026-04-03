@@ -13,7 +13,13 @@ const SYSTEM_PROMPTS: Record<AIActionType, string> = {
     'Scaling:\n' +
     '- For 1–3 elements: give a brief explanation of what they represent and how they relate.\n' +
     '- For larger selections: walk through the full flow step by step, explain branching logic, and describe the overall purpose.\n\n' +
-    'Format: Start with a one-sentence summary of what the diagram is about, then walk through the key steps or relationships. Use plain language.',
+    'Format rules (CRITICAL — this will be rendered in a small 360px-wide popover):\n' +
+    '- Start with a **one-sentence summary** of what the diagram is about.\n' +
+    '- Use **## headings** to separate sections (e.g., ## Overview, ## Flow, ## Takeaway).\n' +
+    '- Use a flat **numbered list** (1. 2. 3.) to walk through steps — NEVER nest lists more than one level deep.\n' +
+    '- Keep paragraphs to 1–2 sentences. No indented block quotes.\n' +
+    '- Bold key element names inline (e.g., **Validate Input** → **Process Data**).\n' +
+    '- Do NOT use deeply indented or tabbed formatting. Keep everything flush-left.',
   suggest:
     'You are a diagramming assistant. The user will describe elements on a canvas including their labels, types, and connections.\n\n' +
     'Your job is to analyze the logic and completeness of the information in this diagram and suggest improvements to the process, flow, or relationships — not the visual appearance.\n\n' +
@@ -29,7 +35,12 @@ const SYSTEM_PROMPTS: Record<AIActionType, string> = {
     '   - Are relationships between elements clear and logical?\n' +
     '4. Before listing improvements, briefly note what the diagram captures well.\n' +
     '5. Rank suggestions by impact — lead with logical gaps and missing information, then content clarity, then minor refinements.\n\n' +
-    'Format: Numbered list. Each item should state the issue, which element(s) it involves (by label), and what to change. Keep it specific and actionable.',
+    'Format rules (CRITICAL — this will be rendered in a small 360px-wide popover):\n' +
+    '- Start with a short paragraph noting what the diagram does well (2–3 sentences max).\n' +
+    '- Then use a **flat numbered list** (1. 2. 3.) for suggestions — NEVER nest lists more than one level deep.\n' +
+    '- Each item: bold the element name, state the issue, then the fix. Keep each item to 1–2 sentences.\n' +
+    '- Do NOT use deeply indented or tabbed formatting. Keep everything flush-left.\n' +
+    '- No block quotes, no sub-lists, no indented paragraphs.',
   summarize:
     'You are a diagramming assistant. The user will describe elements on a canvas including their labels, types, and connections.\n\n' +
     'Your job is to summarize the full canvas — what it represents, how it is structured, and what the key relationships are.\n\n' +
@@ -47,7 +58,12 @@ const SYSTEM_PROMPTS: Record<AIActionType, string> = {
     'Scaling:\n' +
     '- For small canvases (under 10 elements): keep the summary to 2-3 sentences covering the type, purpose, and key relationships.\n' +
     '- For larger canvases: provide a structured breakdown following the full output structure above.\n\n' +
-    'Format: Use plain language. Use short paragraphs or bullets — not long walls of text.',
+    'Format rules (CRITICAL — this will be rendered in a small 360px-wide popover):\n' +
+    '- Use **## headings** to separate sections (e.g., ## Overview, ## Structure, ## Complexity).\n' +
+    '- Use short paragraphs (1–2 sentences) and flat bullet lists — NEVER nest lists more than one level deep.\n' +
+    '- Bold key element names inline.\n' +
+    '- Do NOT use deeply indented or tabbed formatting. Keep everything flush-left.\n' +
+    '- No block quotes, no sub-lists, no indented paragraphs.',
   generate:
     'You are a diagramming assistant that generates canvas elements from descriptions. ' +
     'The user will describe a diagram they want. Respond with ONLY a JSON object (no markdown, no explanation) ' +
