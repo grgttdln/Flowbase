@@ -855,18 +855,19 @@ const CtaSection = () => (
 );
 
 /* ═══════════════════════ FOOTER ═══════════════════════ */
-const footerLinks = {
-  Product: ['Features', 'Templates', 'Pricing', 'Changelog'],
-  Resources: ['Documentation', 'Blog', 'Community', 'Support'],
-  Company: ['About', 'Careers', 'Privacy', 'Terms'],
-};
+const footerNavLinks = [
+  { label: 'Features', href: '#features' },
+  { label: 'How it works', href: '#how-it-works' },
+  { label: 'Use cases', href: '#use-cases' },
+  { label: 'Compare', href: '#compare' },
+];
 
 const Footer = () => (
   <footer className="border-t border-[#ede9fe]/60 px-4 py-16">
-    <div className="mx-auto grid max-w-5xl grid-cols-2 gap-10 md:grid-cols-5">
+    <div className="mx-auto flex max-w-5xl flex-col items-center gap-8 md:flex-row md:items-start md:justify-between">
       {/* Brand */}
-      <div className="col-span-2">
-        <Link href="/" className="flex items-center gap-2 text-[15px] font-bold text-[#7c3aed]">
+      <div className="text-center md:text-left">
+        <Link href="/" className="inline-flex items-center gap-2 text-[15px] font-bold text-[#7c3aed]">
           <Image src="/logo.png" alt="Flowbase" width={28} height={28} />
           Flowbase
         </Link>
@@ -876,22 +877,21 @@ const Footer = () => (
       </div>
 
       {/* Links */}
-      {Object.entries(footerLinks).map(([group, links]) => (
-        <div key={group}>
-          <h4 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#A8A29E]">{group}</h4>
-          <ul className="mt-4 space-y-2.5">
-            {links.map((link) => (
-              <li key={link}>
-                <a href="#" className="text-[13px] text-[#78716C] transition-colors duration-300 hover:text-[#1C1917]">{link}</a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      <nav className="flex flex-wrap justify-center gap-x-8 gap-y-3">
+        {footerNavLinks.map((link) => (
+          <a
+            key={link.href}
+            href={link.href}
+            className="text-[13px] text-[#78716C] transition-colors duration-300 hover:text-[#1C1917]"
+          >
+            {link.label}
+          </a>
+        ))}
+      </nav>
     </div>
 
     <div className="mx-auto mt-12 max-w-5xl border-t border-[#ede9fe]/60 pt-6">
-      <p className="text-[12px] text-[#A8A29E]">© {new Date().getFullYear()} Flowbase. All rights reserved.</p>
+      <p className="text-center text-[12px] text-[#A8A29E] md:text-left">© {new Date().getFullYear()} Flowbase. Made with <span className="text-red-500">&#9829;</span> All rights reserved.</p>
     </div>
   </footer>
 );

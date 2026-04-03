@@ -13,7 +13,6 @@ const ACTION_LABELS: Record<AIActionType, string> = {
   suggest: 'AI: Suggest',
   summarize: 'AI: Summarize',
   generate: 'AI: Generate',
-  layout: 'AI: Layout',
 };
 
 export interface AIResponsePopoverProps {

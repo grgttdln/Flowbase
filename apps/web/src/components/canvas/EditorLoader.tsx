@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useCanvasStore, CollaborationProvider } from '@flowbase/canvas';
+import { useCanvasStore, CollaborationProvider, recalcBoundArrow } from '@flowbase/canvas';
 import type { Project } from '@flowbase/shared';
 import { getProject } from '@/lib/db';
 import CanvasEditor from './CanvasEditor';
@@ -25,7 +25,14 @@ const EditorLoader = ({ projectId }: EditorLoaderProps) => {
         router.replace('/');
         return;
       }
-      useCanvasStore.getState().setElements(p.scene.elements);
+      // Recalculate bound arrows so connections snap to actual anchor positions
+      let elements = p.scene.elements;
+      elements = elements.map((el) => {
+        if ((el.type !== 'arrow' && el.type !== 'line') || (!el.startBinding && !el.endBinding)) return el;
+        const updates = recalcBoundArrow(el, elements);
+        return updates ? { ...el, ...updates } : el;
+      });
+      useCanvasStore.getState().setElements(elements);
       setProject(p);
       setLoading(false);
     })();

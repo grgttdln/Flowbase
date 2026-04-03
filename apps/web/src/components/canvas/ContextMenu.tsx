@@ -44,8 +44,7 @@ export type ContextMenuAction =
   | 'explain'
   | 'suggest'
   | 'summarize'
-  | 'generate'
-  | 'layout';
+  | 'generate';
 
 interface MenuItem {
   action: ContextMenuAction;
@@ -63,7 +62,6 @@ const MENU_ITEMS: (MenuItem | 'divider')[] = [
   { action: 'explain', label: 'Explain', icon: MessageSquare, isAI: true, needsSelection: true },
   { action: 'suggest', label: 'Suggest improvements', icon: Lightbulb, isAI: true, needsSelection: true },
   { action: 'summarize', label: 'Summarize', icon: FileText, isAI: true },
-  { action: 'layout', label: 'Auto-Layout', icon: Sparkles, isAI: true, needsMinElements: 2 },
   'divider',
   { action: 'copy', label: 'Copy', icon: Copy, shortcut: '⌘C', needsSelection: true },
   { action: 'paste', label: 'Paste', icon: ClipboardPaste, shortcut: '⌘V' },

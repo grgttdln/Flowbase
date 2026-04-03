@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { FlowbaseCanvas, useCanvasStore, recalcBoundArrow, getAnchorPoints, useCollaboration } from '@flowbase/canvas';
+import { FlowbaseCanvas, useCanvasStore, useCollaboration } from '@flowbase/canvas';
 import type Konva from 'konva';
-import type { ToolType, AIActionType, Binding } from '@flowbase/shared';
+import type { ToolType, AIActionType } from '@flowbase/shared';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { getAISettings } from '@/hooks/useAIAction';
 import ToolPicker from '../toolbar/ToolPicker';
@@ -19,9 +19,6 @@ import SettingsPanel from '../dialogs/SettingsPanel';
 import ShortcutsPanel from '../dialogs/ShortcutsPanel';
 import PropertiesSidebar from '../properties/PropertiesSidebar';
 import GenerateDialog from '../ai/GenerateDialog';
-import { parseLayoutResponse } from '@flowbase/ai';
-import type { LayoutPreviewPosition } from '@flowbase/canvas';
-import LayoutPreview from '../ai/LayoutPreview';
 import SharePopover from '../dialogs/SharePopover';
 
 interface AIPopoverInstance {
@@ -54,10 +51,6 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
   const [aiPopovers, setAiPopovers] = useState<AIPopoverInstance[]>([]);
   const [activePopoverId, setActivePopoverId] = useState<string | null>(null);
   const abortControllers = useRef<Map<string, AbortController>>(new Map());
-  const [layoutPreview, setLayoutPreview] = useState<LayoutPreviewPosition[] | null>(null);
-  const [isLayoutLoading, setIsLayoutLoading] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const layoutAbortController = useRef<AbortController | null>(null);
   const activeTool = useCanvasStore((s) => s.activeTool);
   const setTool = useCanvasStore((s) => s.setTool);
   const viewport = useCanvasStore((s) => s.viewport);
@@ -83,31 +76,11 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
   const alignBottom = useCanvasStore((s) => s.alignBottom);
   const distributeH = useCanvasStore((s) => s.distributeH);
   const distributeV = useCanvasStore((s) => s.distributeV);
-  const pushHistory = useCanvasStore((s) => s.pushHistory);
-  const setElements = useCanvasStore((s) => s.setElements);
-
   const { isCollaborating, status: collabStatus, roomId: collabRoomId } = useCollaboration();
 
   const { status: saveStatus, flushSave } = useAutoSave(projectId ?? '', stageRef, !isCollabMode);
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; elementId?: string } | null>(null);
-
-  // Cancel layout loading on Escape
-  useEffect(() => {
-    if (!isLayoutLoading) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        if (layoutAbortController.current) {
-          layoutAbortController.current.abort();
-          layoutAbortController.current = null;
-        }
-        setIsLayoutLoading(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLayoutLoading]);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -275,205 +248,6 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
     [selectedIds, streamToPopover],
   );
 
-  const runLayoutAction = useCallback(async () => {
-    setLayoutPreview(null);
-    setIsLayoutLoading(true);
-
-    const { apiKey, model } = getAISettings();
-    if (!apiKey) {
-      setSettingsHint('Enter your OpenRouter API key to use AI features.');
-      setSettingsOpen(true);
-      setIsLayoutLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    layoutAbortController.current = controller;
-
-    try {
-      const scene = { version: 1, elements };
-      const response = await fetch('/api/ai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({ action: 'layout', scene, model }),
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || `Request failed (${response.status})`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body');
-
-      const decoder = new TextDecoder();
-      let sseBuffer = '';
-      let fullText = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        sseBuffer += decoder.decode(value, { stream: true });
-        const lines = sseBuffer.split('\n');
-        sseBuffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data: ')) continue;
-          const data = trimmed.slice(6);
-          if (data === '[DONE]') break;
-
-          try {
-            const parsed = JSON.parse(data);
-            if (typeof parsed === 'string') {
-              fullText += parsed;
-            } else if (parsed.error) {
-              throw new Error(parsed.error);
-            }
-          } catch (e) {
-            if (e instanceof Error && e.message !== 'Unexpected') throw e;
-          }
-        }
-      }
-
-      const existingIds = elements.map((el) => el.id);
-      const result = parseLayoutResponse(fullText, existingIds);
-
-      if (result.positions.length === 0) {
-        throw new Error('AI could not generate layout suggestions. Try again.');
-      }
-
-      setLayoutPreview(result.positions);
-    } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') return;
-      const errorMsg = e instanceof Error ? e.message : 'Layout failed';
-      alert(errorMsg);
-    } finally {
-      setIsLayoutLoading(false);
-      layoutAbortController.current = null;
-    }
-  }, [elements]);
-
-  const handleApplyLayout = useCallback(() => {
-    if (!layoutPreview) return;
-
-    const posMap = new Map(layoutPreview.map((p) => [p.id, { x: p.x, y: p.y }]));
-
-    const startPositions = new Map<string, { x: number; y: number }>();
-    for (const el of elements) {
-      if (posMap.has(el.id)) {
-        startPositions.set(el.id, { x: el.x, y: el.y });
-      }
-    }
-
-    // Build a snapshot of elements at their final target positions for anchor calculation
-    const finalElements = elements.map((el) => {
-      const target = posMap.get(el.id);
-      return target ? { ...el, x: target.x, y: target.y } : el;
-    });
-
-    // Recompute optimal anchor bindings based on final positions
-    // For each bound arrow, find the closest anchor pair between source and target shapes
-    const updatedBindings = new Map<string, { startBinding?: Binding; endBinding?: Binding }>();
-    for (const el of elements) {
-      if ((el.type !== 'arrow' && el.type !== 'line') || (!el.startBinding && !el.endBinding)) continue;
-
-      const sb = el.startBinding;
-      const eb = el.endBinding;
-
-      if (sb && eb) {
-        const sourceEl = finalElements.find((e) => e.id === sb.elementId);
-        const targetEl = finalElements.find((e) => e.id === eb.elementId);
-
-        if (sourceEl && targetEl) {
-          const sourceAnchors = getAnchorPoints(sourceEl);
-          const targetAnchors = getAnchorPoints(targetEl);
-
-          let bestDist = Infinity;
-          let bestSource = sourceAnchors[0];
-          let bestTarget = targetAnchors[0];
-
-          for (const sa of sourceAnchors) {
-            for (const ta of targetAnchors) {
-              const dist = Math.hypot(sa.x - ta.x, sa.y - ta.y);
-              if (dist < bestDist) {
-                bestDist = dist;
-                bestSource = sa;
-                bestTarget = ta;
-              }
-            }
-          }
-
-          updatedBindings.set(el.id, {
-            startBinding: { elementId: sb.elementId, anchor: bestSource.anchor },
-            endBinding: { elementId: eb.elementId, anchor: bestTarget.anchor },
-          });
-        }
-      }
-    }
-
-    setLayoutPreview(null);
-    pushHistory();
-    setIsAnimating(true);
-
-    const duration = 300;
-    const startTime = performance.now();
-    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-
-    const animate = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = easeOut(progress);
-
-      // Update shape positions and arrow bindings
-      let updated = elements.map((el) => {
-        const bindingUpdate = updatedBindings.get(el.id);
-        const withBindings = bindingUpdate ? { ...el, ...bindingUpdate } : el;
-
-        const start = startPositions.get(el.id);
-        const target = posMap.get(el.id);
-        if (!start || !target) return withBindings;
-
-        return {
-          ...withBindings,
-          x: start.x + (target.x - start.x) * eased,
-          y: start.y + (target.y - start.y) * eased,
-        };
-      });
-
-      // Recalculate bound arrow positions to follow their connected shapes
-      updated = updated.map((el) => {
-        if ((el.type !== 'arrow' && el.type !== 'line') || (!el.startBinding && !el.endBinding)) return el;
-        const arrowUpdates = recalcBoundArrow(el, updated);
-        if (!arrowUpdates) return el;
-        return { ...el, ...arrowUpdates };
-      });
-
-      setElements(updated);
-
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        setIsAnimating(false);
-      }
-    };
-
-    requestAnimationFrame(animate);
-  }, [layoutPreview, elements, pushHistory, setElements]);
-
-  const handleCancelLayout = useCallback(() => {
-    setLayoutPreview(null);
-    if (layoutAbortController.current) {
-      layoutAbortController.current.abort();
-      layoutAbortController.current = null;
-    }
-  }, []);
-
   const handleClosePopover = useCallback((id: string) => {
     const controller = abortControllers.current.get(id);
     if (controller) {
@@ -561,9 +335,6 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
       case 'generate':
         setGenerateOpen(true);
         break;
-      case 'layout':
-        runLayoutAction();
-        break;
       case 'explain':
       case 'suggest':
       case 'summarize':
@@ -572,19 +343,18 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
         }
         break;
     }
-  }, [copy, paste, deleteElements, selectedIds, group, ungroup, bringForward, sendBackward, alignLeft, alignCenterH, alignRight, alignTop, alignCenterV, alignBottom, distributeH, distributeV, contextMenu, runAIAction, runLayoutAction]);
+  }, [copy, paste, deleteElements, selectedIds, group, ungroup, bringForward, sendBackward, alignLeft, alignCenterH, alignRight, alignTop, alignCenterV, alignBottom, distributeH, distributeV, contextMenu, runAIAction]);
 
   if (dimensions.width === 0) return null;
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-white" style={isAnimating ? { pointerEvents: 'none' } : undefined}>
+    <div className="relative h-screen w-screen overflow-hidden bg-white">
       {/* Canvas */}
       <FlowbaseCanvas
         width={dimensions.width}
         height={dimensions.height}
         stageRef={stageRef}
         onContextMenu={handleContextMenu}
-        layoutPreview={layoutPreview}
       />
 
       {/* Reconnecting banner */}
@@ -701,19 +471,6 @@ const CanvasEditor = ({ projectId, projectName }: CanvasEditorProps) => {
           onActivate={handleActivatePopover}
         />
       ))}
-
-      {/* Layout loading indicator */}
-      {isLayoutLoading && (
-        <div className="absolute bottom-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-[14px] border border-black/[0.06] bg-white/90 px-5 py-3 shadow-[0_0_0_0.5px_rgba(0,0,0,0.03),0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.06)] backdrop-blur-xl">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#7c3aed] border-t-transparent" />
-          <span className="text-[13px] font-medium text-[#52525b]">Analyzing layout…</span>
-        </div>
-      )}
-
-      {/* Layout preview controls */}
-      {layoutPreview && (
-        <LayoutPreview onApply={handleApplyLayout} onCancel={handleCancelLayout} />
-      )}
 
       {/* Generate Diagram dialog */}
       <GenerateDialog

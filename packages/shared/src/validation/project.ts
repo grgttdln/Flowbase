@@ -1,7 +1,7 @@
 import type { ElementType } from '../types/element';
 
 const ELEMENT_TYPES: ElementType[] = [
-  'rectangle', 'ellipse', 'diamond', 'line', 'arrow', 'freehand', 'text',
+  'rectangle', 'ellipse', 'diamond', 'line', 'arrow', 'freehand', 'text', 'stickynote',
 ];
 
 const REQUIRED_ELEMENT_FIELDS = ['id', 'type', 'x', 'y', 'width', 'height'] as const;

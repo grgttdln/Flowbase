@@ -2,7 +2,7 @@ import type { Element } from '@flowbase/shared';
 
 const MAX_ELEMENTS = 50;
 
-function describeElement(el: Element): string {
+function describeElement(el: Element, labelMap?: Map<string, string>): string {
   const parts: string[] = [];
 
   // Type
@@ -33,12 +33,14 @@ function describeElement(el: Element): string {
     parts.push(`text: "${el.text}"`);
   }
 
-  // Bindings
+  // Bindings — use text labels when available for readability
   if (el.startBinding) {
-    parts.push(`connected from: ${el.startBinding.elementId.slice(0, 6)} (${el.startBinding.anchor})`);
+    const label = labelMap?.get(el.startBinding.elementId) ?? el.startBinding.elementId.slice(0, 6);
+    parts.push(`connected from: ${label}`);
   }
   if (el.endBinding) {
-    parts.push(`connected to: ${el.endBinding.elementId.slice(0, 6)} (${el.endBinding.anchor})`);
+    const label = labelMap?.get(el.endBinding.elementId) ?? el.endBinding.elementId.slice(0, 6);
+    parts.push(`connected to: ${label}`);
   }
 
   // Group
@@ -53,7 +55,17 @@ export function serializeElements(elements: Element[]): string {
   const truncated = elements.length > MAX_ELEMENTS;
   const subset = truncated ? elements.slice(0, MAX_ELEMENTS) : elements;
 
-  const lines = subset.map((el, i) => `${i + 1}. ${describeElement(el)}`);
+  // Build a lookup from element ID to label for readable connection descriptions
+  const labelMap = new Map<string, string>();
+  for (const el of subset) {
+    if (el.text) {
+      labelMap.set(el.id, `"${el.text}"`);
+    } else {
+      labelMap.set(el.id, `${el.type} (${el.id.slice(0, 6)})`);
+    }
+  }
+
+  const lines = subset.map((el, i) => `${i + 1}. ${describeElement(el, labelMap)}`);
 
   let result = `Canvas contains ${elements.length} element${elements.length !== 1 ? 's' : ''}:\n`;
   result += lines.join('\n');
@@ -65,36 +77,3 @@ export function serializeElements(elements: Element[]): string {
   return result;
 }
 
-export function serializeForLayout(elements: Element[]): string {
-  const truncated = elements.length > MAX_ELEMENTS;
-  const subset = truncated ? elements.slice(0, MAX_ELEMENTS) : elements;
-
-  // Extract connections from bound arrows before filtering them out
-  const connections: Array<{ from: string; to: string }> = [];
-  for (const el of subset) {
-    if ((el.type === 'arrow' || el.type === 'line') && el.startBinding && el.endBinding) {
-      connections.push({
-        from: el.startBinding.elementId,
-        to: el.endBinding.elementId,
-      });
-    }
-  }
-
-  // Exclude bound arrows — their positions are determined by the binding system
-  const layoutElements = subset.filter(
-    (el) => !(el.startBinding || el.endBinding),
-  );
-
-  const data = layoutElements.map((el) => ({
-    id: el.id,
-    type: el.type,
-    x: Math.round(el.x),
-    y: Math.round(el.y),
-    width: Math.round(el.width),
-    height: Math.round(el.height),
-    text: el.text ?? null,
-    groupId: el.groupId ?? null,
-  }));
-
-  return JSON.stringify({ elements: data, connections });
-}
