@@ -20,7 +20,7 @@ const ConnectionPoints = ({
   threshold = 80,
   snappedAnchor,
 }: ConnectionPointsProps) => {
-  const connectableTypes = new Set(['rectangle', 'ellipse', 'diamond', 'text']);
+  const connectableTypes = new Set(['rectangle', 'ellipse', 'diamond', 'text', 'stickynote']);
 
   const nearbyElements = elements.filter((el) => {
     if (!connectableTypes.has(el.type)) return false;
