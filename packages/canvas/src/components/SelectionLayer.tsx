@@ -5,12 +5,11 @@ import { useCanvasStore } from '../store/useCanvasStore';
 
 interface SelectionLayerProps {
   stageRef: React.RefObject<Konva.Stage | null>;
-  onTransformingChange?: (isTransforming: boolean) => void;
 }
 
 const MID_ANCHORS = ['top-center', 'middle-left', 'middle-right', 'bottom-center'];
 
-const SelectionLayer = ({ stageRef, onTransformingChange }: SelectionLayerProps) => {
+const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
   const transformerRef = useRef<Konva.Transformer>(null);
   const selectedIds = useCanvasStore((s) => s.selectedIds);
   const elements = useCanvasStore((s) => s.elements);
@@ -21,20 +20,6 @@ const SelectionLayer = ({ stageRef, onTransformingChange }: SelectionLayerProps)
     () => new Set(elements.filter((el) => el.type === 'line' || el.type === 'arrow').map((el) => el.id)),
     [elements]
   );
-
-  // Hide mid-edge anchors visually while keeping them functional
-  const hideMidAnchors = useCallback(() => {
-    const transformer = transformerRef.current;
-    if (!transformer) return;
-    MID_ANCHORS.forEach((name) => {
-      const anchor = transformer.findOne<Konva.Rect>(`.${name}`);
-      if (anchor) {
-        anchor.fill('transparent');
-        anchor.stroke('transparent');
-        anchor.strokeWidth(0);
-      }
-    });
-  }, []);
 
   useEffect(() => {
     const transformer = transformerRef.current;
@@ -50,18 +35,25 @@ const SelectionLayer = ({ stageRef, onTransformingChange }: SelectionLayerProps)
       .filter((node): node is Konva.Node => node !== null && node !== undefined);
 
     transformer.nodes(selectedNodes);
-    hideMidAnchors();
-    layer.batchDraw();
-  }, [selectedIds, lineArrowIds, stageRef, hideMidAnchors]);
 
-  const handleTransformStart = useCallback(() => {
-    pushHistory();
-    onTransformingChange?.(true);
-  }, [pushHistory, onTransformingChange]);
+    // Hide mid-edge anchors visually while keeping them functional for resize
+    MID_ANCHORS.forEach((name) => {
+      const anchor = transformer.findOne<Konva.Rect>(`.${name}`);
+      if (anchor) {
+        anchor.fill('transparent');
+        anchor.stroke('transparent');
+        anchor.strokeWidth(0);
+      }
+    });
+
+    layer.batchDraw();
+  }, [selectedIds, lineArrowIds, stageRef]);
 
   const handleTransformEnd = useCallback(() => {
     const transformer = transformerRef.current;
     if (!transformer) return;
+
+    pushHistory();
 
     const nodes = transformer.nodes();
     nodes.forEach((node) => {
@@ -80,9 +72,7 @@ const SelectionLayer = ({ stageRef, onTransformingChange }: SelectionLayerProps)
       node.scaleX(1);
       node.scaleY(1);
     });
-
-    onTransformingChange?.(false);
-  }, [updateElement, onTransformingChange]);
+  }, [updateElement, pushHistory]);
 
   return (
     <Transformer
@@ -93,7 +83,6 @@ const SelectionLayer = ({ stageRef, onTransformingChange }: SelectionLayerProps)
         }
         return newBox;
       }}
-      onTransformStart={handleTransformStart}
       onTransformEnd={handleTransformEnd}
       anchorSize={8}
       anchorCornerRadius={2}

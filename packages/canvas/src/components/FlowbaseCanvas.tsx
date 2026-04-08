@@ -100,9 +100,6 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
   // Text editing
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
-  // Transform state (hide connection handles during resize)
-  const [isTransforming, setIsTransforming] = useState(false);
-
   // Laser pointer
   const [laserTrails, setLaserTrails] = useState<LaserTrail[]>([]);
   const laserIdCounter = useRef(0);
@@ -780,7 +777,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
                 onSegmentDblClick={handleSegmentDblClick}
               />
             ))}
-          {activeTool === 'select' && selectedIds.size > 0 && !isTransforming && (
+          {activeTool === 'select' && selectedIds.size > 0 && (
             <ConnectionHandles
               elements={elements}
               selectedIds={selectedIds}
@@ -814,7 +811,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
           {laserTrails.length > 0 && (
             <LaserLayer trails={laserTrails} onCleanup={handleLaserCleanup} />
           )}
-          <SelectionLayer stageRef={stageRef} onTransformingChange={setIsTransforming} />
+          <SelectionLayer stageRef={stageRef} />
         </Layer>
         {/* Remote presence layer */}
         {awareness && (
