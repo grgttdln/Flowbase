@@ -1,13 +1,14 @@
-import { useRef, useEffect, useCallback, useMemo } from 'react';
+import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import { Transformer, Rect } from 'react-konva';
 import type Konva from 'konva';
 import { useCanvasStore } from '../store/useCanvasStore';
 
 interface SelectionLayerProps {
   stageRef: React.RefObject<Konva.Stage | null>;
+  onTransformChange?: (isTransforming: boolean) => void;
 }
 
-const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
+const SelectionLayer = ({ stageRef, onTransformChange }: SelectionLayerProps) => {
   const transformerRef = useRef<Konva.Transformer>(null);
   const selectedIds = useCanvasStore((s) => s.selectedIds);
   const elements = useCanvasStore((s) => s.elements);
@@ -35,6 +36,10 @@ const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
     layer.batchDraw();
   }, [selectedIds, lineArrowIds, stageRef]);
 
+  const handleTransformStart = useCallback(() => {
+    onTransformChange?.(true);
+  }, [onTransformChange]);
+
   const handleTransformEnd = useCallback(() => {
     const transformer = transformerRef.current;
     if (!transformer) return;
@@ -56,7 +61,9 @@ const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
       node.scaleX(1);
       node.scaleY(1);
     });
-  }, [updateElement]);
+
+    onTransformChange?.(false);
+  }, [updateElement, onTransformChange]);
 
   return (
     <Transformer
@@ -67,6 +74,7 @@ const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
         }
         return newBox;
       }}
+      onTransformStart={handleTransformStart}
       onTransformEnd={handleTransformEnd}
       anchorSize={8}
       anchorCornerRadius={2}
