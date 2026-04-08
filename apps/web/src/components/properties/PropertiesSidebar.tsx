@@ -7,6 +7,7 @@ import ColorPicker from './ColorPicker';
 import StrokeWidthPicker from './StrokeWidthPicker';
 import OpacitySlider from './OpacitySlider';
 import FontSizePicker from './FontSizePicker';
+import HeadingPicker from './HeadingPicker';
 import LayerControls from './LayerControls';
 
 type SidebarMode = 'defaults' | 'element';
@@ -16,6 +17,7 @@ interface SectionVisibility {
   fill: boolean;
   strokeWidth: boolean;
   fontSize: boolean;
+  heading: boolean;
   opacity: boolean;
   layers: boolean;
 }
@@ -25,17 +27,17 @@ function getSections(elementType: string): SectionVisibility {
     case 'rectangle':
     case 'ellipse':
     case 'diamond':
-      return { stroke: true, fill: true, strokeWidth: true, fontSize: false, opacity: true, layers: true };
+      return { stroke: true, fill: true, strokeWidth: true, fontSize: false, heading: false, opacity: true, layers: true };
     case 'line':
     case 'arrow':
     case 'freehand':
-      return { stroke: true, fill: false, strokeWidth: true, fontSize: false, opacity: true, layers: true };
+      return { stroke: true, fill: false, strokeWidth: true, fontSize: false, heading: false, opacity: true, layers: true };
     case 'text':
-      return { stroke: true, fill: false, strokeWidth: false, fontSize: true, opacity: true, layers: true };
+      return { stroke: true, fill: false, strokeWidth: false, fontSize: true, heading: true, opacity: true, layers: true };
     case 'stickynote':
-      return { stroke: true, fill: true, strokeWidth: false, fontSize: true, opacity: true, layers: true };
+      return { stroke: true, fill: true, strokeWidth: false, fontSize: true, heading: false, opacity: true, layers: true };
     default:
-      return { stroke: true, fill: true, strokeWidth: true, fontSize: false, opacity: true, layers: true };
+      return { stroke: true, fill: true, strokeWidth: true, fontSize: false, heading: false, opacity: true, layers: true };
   }
 }
 
@@ -159,6 +161,14 @@ const PropertiesSidebar = () => {
         {sections.fontSize && (
           <FontSizePicker
             value={currentFontSize}
+            onChange={(s) => handleChange('fontSize', s)}
+            disabled={isLocked}
+          />
+        )}
+
+        {sections.heading && (
+          <HeadingPicker
+            currentFontSize={currentFontSize}
             onChange={(s) => handleChange('fontSize', s)}
             disabled={isLocked}
           />
