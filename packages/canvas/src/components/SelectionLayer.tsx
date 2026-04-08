@@ -77,10 +77,24 @@ const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
       rotateAnchorOffset={20}
       enabledAnchors={[
         'top-left',
+        'top-center',
         'top-right',
+        'middle-right',
         'bottom-right',
+        'bottom-center',
         'bottom-left',
+        'middle-left',
       ]}
+      anchorStyleFunc={(anchor) => {
+        const isCorner = anchor.hasName('top-left') || anchor.hasName('top-right')
+          || anchor.hasName('bottom-left') || anchor.hasName('bottom-right');
+        if (!isCorner) {
+          anchor.fill('transparent');
+          anchor.stroke('transparent');
+          anchor.width(12);
+          anchor.height(12);
+        }
+      }}
     />
   );
 };
