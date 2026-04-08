@@ -15,7 +15,7 @@ export { snapPosition, snapToGrid } from './utils/snapping';
 export type { SnapResult, SnapGuide } from './utils/snapping';
 export { getElementBounds, getSelectionBounds, isPointInBounds, doBoundsOverlap } from './utils/geometry';
 export type { BoundingBox } from './utils/geometry';
-export { getAnchorPoints, getAnchorPosition, findNearestAnchor, recalcBoundArrow } from './utils/connectors';
+export { getAnchorPoints, getAnchorPosition, findNearestAnchor, findNearestAnchorWithRadius, recalcBoundArrow } from './utils/connectors';
 export type { AnchorPoint } from './utils/connectors';
 
 // Collaboration

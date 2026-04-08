@@ -67,6 +67,31 @@ export function findNearestAnchor(
   return nearest;
 }
 
+/** Find the nearest anchor point within a custom radius */
+export function findNearestAnchorWithRadius(
+  x: number,
+  y: number,
+  elements: Element[],
+  radius: number,
+  excludeId?: string,
+): AnchorPoint | null {
+  let nearest: AnchorPoint | null = null;
+  let minDist = radius;
+
+  for (const el of elements) {
+    if (el.id === excludeId || !isConnectable(el.type)) continue;
+    for (const anchor of getAnchorPoints(el)) {
+      const dist = Math.hypot(anchor.x - x, anchor.y - y);
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = anchor;
+      }
+    }
+  }
+
+  return nearest;
+}
+
 /** Direction vector for an anchor — which way the connector should exit/enter */
 function anchorDirection(anchor: AnchorPosition): { dx: number; dy: number } {
   switch (anchor) {
