@@ -43,40 +43,16 @@ function isConnectable(type: string): boolean {
   return CONNECTABLE_TYPES.has(type);
 }
 
-/** Find the nearest anchor point to a given position, within snap threshold */
+/** Find the nearest anchor point to a given position, within snap threshold or custom radius */
 export function findNearestAnchor(
   x: number,
   y: number,
   elements: Element[],
   excludeId?: string,
+  radius?: number,
 ): AnchorPoint | null {
   let nearest: AnchorPoint | null = null;
-  let minDist = SNAP_THRESHOLD;
-
-  for (const el of elements) {
-    if (el.id === excludeId || !isConnectable(el.type)) continue;
-    for (const anchor of getAnchorPoints(el)) {
-      const dist = Math.hypot(anchor.x - x, anchor.y - y);
-      if (dist < minDist) {
-        minDist = dist;
-        nearest = anchor;
-      }
-    }
-  }
-
-  return nearest;
-}
-
-/** Find the nearest anchor point within a custom radius */
-export function findNearestAnchorWithRadius(
-  x: number,
-  y: number,
-  elements: Element[],
-  radius: number,
-  excludeId?: string,
-): AnchorPoint | null {
-  let nearest: AnchorPoint | null = null;
-  let minDist = radius;
+  let minDist = radius ?? SNAP_THRESHOLD;
 
   for (const el of elements) {
     if (el.id === excludeId || !isConnectable(el.type)) continue;

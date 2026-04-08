@@ -4,12 +4,12 @@ import { useState, useCallback, useRef } from 'react';
 import { Circle, Arrow, Group } from 'react-konva';
 import type Konva from 'konva';
 import type { Element, AnchorPosition } from '@flowbase/shared';
-import { DEFAULT_ELEMENT_PROPS } from '@flowbase/shared';
+import { DEFAULT_ELEMENT_PROPS, generateId } from '@flowbase/shared';
 import { useCanvasStore } from '../store/useCanvasStore';
 import {
   getAnchorPoints,
   getAnchorPosition,
-  findNearestAnchorWithRadius,
+  findNearestAnchor,
   recalcBoundArrow,
   CONNECTABLE_TYPES,
 } from '../utils/connectors';
@@ -45,10 +45,9 @@ interface ConnectionHandlesProps {
 }
 
 const ConnectionHandles = ({ elements, selectedIds }: ConnectionHandlesProps) => {
-  const addElement = useCanvasStore((s) => s.addElement);
   const pushHistory = useCanvasStore((s) => s.pushHistory);
   const selectIds = useCanvasStore((s) => s.select);
-  const updateElement = useCanvasStore((s) => s.updateElement);
+  const setElements = useCanvasStore((s) => s.setElements);
 
   const [hoveredHandle, setHoveredHandle] = useState<string | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
@@ -61,10 +60,9 @@ const ConnectionHandles = ({ elements, selectedIds }: ConnectionHandlesProps) =>
 
   const handleDragStart = useCallback(
     (elementId: string, anchor: AnchorPosition, e: Konva.KonvaEventObject<DragEvent>) => {
-      const el = elementsRef.current.find((e) => e.id === elementId);
+      const el = elementsRef.current.find((item) => item.id === elementId);
       if (!el) return;
       const pos = getAnchorPosition(el, anchor);
-      // Reset the circle position so it doesn't visually move from the anchor
       e.target.x(pos.x);
       e.target.y(pos.y);
       setDragState({
@@ -85,12 +83,12 @@ const ConnectionHandles = ({ elements, selectedIds }: ConnectionHandlesProps) =>
       const x = e.target.x();
       const y = e.target.y();
 
-      const snapped = findNearestAnchorWithRadius(
+      const snapped = findNearestAnchor(
         x,
         y,
         elementsRef.current,
-        DETECT_RADIUS,
         elementId,
+        DETECT_RADIUS,
       );
 
       setDragState((prev) =>
@@ -115,7 +113,8 @@ const ConnectionHandles = ({ elements, selectedIds }: ConnectionHandlesProps) =>
         return;
       }
 
-      const sourceEl = elementsRef.current.find((el) => el.id === elementId);
+      const currentElements = elementsRef.current;
+      const sourceEl = currentElements.find((el) => el.id === elementId);
       if (!sourceEl) {
         setDragState(null);
         return;
@@ -136,13 +135,22 @@ const ConnectionHandles = ({ elements, selectedIds }: ConnectionHandlesProps) =>
         return;
       }
 
-      // Case A: snapped to a nearby shape — connect to it
+      // Push history once for the entire operation (undo in one step)
+      pushHistory();
+
+      const maxZ = currentElements.length > 0
+        ? Math.max(...currentElements.map((el) => el.zIndex))
+        : -1;
+
       if (state.snappedTarget) {
+        // Case A: snapped to a nearby shape — connect to it
         const targetAnchor = state.snappedTarget;
         const startPos = getAnchorPosition(sourceEl, anchor);
         const endPos = { x: targetAnchor.x, y: targetAnchor.y };
 
-        const arrowId = addElement({
+        const arrowEl: Element = {
+          ...DEFAULT_ELEMENT_PROPS,
+          id: generateId(),
           type: 'arrow',
           x: startPos.x,
           y: startPos.y,
@@ -155,22 +163,18 @@ const ConnectionHandles = ({ elements, selectedIds }: ConnectionHandlesProps) =>
             anchor: targetAnchor.anchor,
           },
           autoRoute: true,
-          ...DEFAULT_ELEMENT_PROPS,
           fill: 'transparent',
           stroke: sourceEl.stroke,
           strokeWidth: sourceEl.strokeWidth,
-        });
+          zIndex: maxZ + 1,
+        };
 
-        // Recalc auto-route
-        const updatedElements = elementsRef.current;
-        const arrowEl = updatedElements.find((el) => el.id === arrowId);
-        if (arrowEl) {
-          const routeUpdate = recalcBoundArrow(arrowEl, updatedElements);
-          if (routeUpdate) {
-            updateElement(arrowId, routeUpdate);
-          }
-        }
+        // Recalc auto-route using locally constructed element
+        const allElements = [...currentElements, arrowEl];
+        const routeUpdate = recalcBoundArrow(arrowEl, allElements);
+        const finalArrow = routeUpdate ? { ...arrowEl, ...routeUpdate } : arrowEl;
 
+        setElements([...currentElements, finalArrow]);
         selectIds([elementId]);
       } else {
         // Case B: no nearby shape — create a clone and connect
@@ -198,25 +202,9 @@ const ConnectionHandles = ({ elements, selectedIds }: ConnectionHandlesProps) =>
             break;
         }
 
-        const newShapeId = addElement({
-          type: sourceEl.type,
-          x: newX,
-          y: newY,
-          width: sourceEl.width,
-          height: sourceEl.height,
-          fill: sourceEl.fill,
-          stroke: sourceEl.stroke,
-          strokeWidth: sourceEl.strokeWidth,
-          opacity: sourceEl.opacity,
-          rotation: 0,
-          locked: false,
-        });
-
-        // Now create the arrow connecting the two
-        const startPos = getAnchorPosition(sourceEl, anchor);
         const newShapeEl: Element = {
           ...DEFAULT_ELEMENT_PROPS,
-          id: newShapeId,
+          id: generateId(),
           type: sourceEl.type,
           x: newX,
           y: newY,
@@ -228,11 +216,15 @@ const ConnectionHandles = ({ elements, selectedIds }: ConnectionHandlesProps) =>
           opacity: sourceEl.opacity,
           rotation: 0,
           locked: false,
-          zIndex: 0,
+          zIndex: maxZ + 1,
         };
+
+        const startPos = getAnchorPosition(sourceEl, anchor);
         const endPos = getAnchorPosition(newShapeEl, oppositeAnchor);
 
-        const arrowId = addElement({
+        const arrowEl: Element = {
+          ...DEFAULT_ELEMENT_PROPS,
+          id: generateId(),
           type: 'arrow',
           x: startPos.x,
           y: startPos.y,
@@ -240,50 +232,26 @@ const ConnectionHandles = ({ elements, selectedIds }: ConnectionHandlesProps) =>
           height: Math.abs(endPos.y - startPos.y),
           points: [0, 0, endPos.x - startPos.x, endPos.y - startPos.y],
           startBinding: { elementId: sourceEl.id, anchor },
-          endBinding: { elementId: newShapeId, anchor: oppositeAnchor },
-          autoRoute: true,
-          ...DEFAULT_ELEMENT_PROPS,
-          fill: 'transparent',
-          stroke: sourceEl.stroke,
-          strokeWidth: sourceEl.strokeWidth,
-        });
-
-        // Recalc auto-route for the arrow using the latest elements
-        // We need to build the elements list including the new shape
-        const latestElements = [
-          ...elementsRef.current,
-          newShapeEl,
-        ];
-        const arrowEl = latestElements.find((el) => el.id === arrowId) ?? {
-          ...DEFAULT_ELEMENT_PROPS,
-          id: arrowId,
-          type: 'arrow' as const,
-          x: startPos.x,
-          y: startPos.y,
-          width: Math.abs(endPos.x - startPos.x),
-          height: Math.abs(endPos.y - startPos.y),
-          points: [0, 0, endPos.x - startPos.x, endPos.y - startPos.y],
-          startBinding: { elementId: sourceEl.id, anchor },
-          endBinding: { elementId: newShapeId, anchor: oppositeAnchor },
+          endBinding: { elementId: newShapeEl.id, anchor: oppositeAnchor },
           autoRoute: true,
           fill: 'transparent',
           stroke: sourceEl.stroke,
           strokeWidth: sourceEl.strokeWidth,
-          rotation: 0,
-          locked: false,
-          zIndex: 0,
+          zIndex: maxZ + 2,
         };
-        const routeUpdate = recalcBoundArrow(arrowEl, latestElements);
-        if (routeUpdate) {
-          updateElement(arrowId, routeUpdate);
-        }
 
-        selectIds([newShapeId]);
+        // Recalc auto-route
+        const allElements = [...currentElements, newShapeEl, arrowEl];
+        const routeUpdate = recalcBoundArrow(arrowEl, allElements);
+        const finalArrow = routeUpdate ? { ...arrowEl, ...routeUpdate } : arrowEl;
+
+        setElements([...currentElements, newShapeEl, finalArrow]);
+        selectIds([newShapeEl.id, finalArrow.id]);
       }
 
       setDragState(null);
     },
-    [dragState, addElement, selectIds, updateElement],
+    [dragState, pushHistory, selectIds, setElements],
   );
 
   // Build the preview arrow points for rendering during drag
