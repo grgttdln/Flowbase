@@ -1,14 +1,13 @@
-import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
+import { useRef, useEffect, useCallback, useMemo } from 'react';
 import { Transformer, Rect } from 'react-konva';
 import type Konva from 'konva';
 import { useCanvasStore } from '../store/useCanvasStore';
 
 interface SelectionLayerProps {
   stageRef: React.RefObject<Konva.Stage | null>;
-  onTransformChange?: (isTransforming: boolean) => void;
 }
 
-const SelectionLayer = ({ stageRef, onTransformChange }: SelectionLayerProps) => {
+const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
   const transformerRef = useRef<Konva.Transformer>(null);
   const selectedIds = useCanvasStore((s) => s.selectedIds);
   const elements = useCanvasStore((s) => s.elements);
@@ -33,12 +32,18 @@ const SelectionLayer = ({ stageRef, onTransformChange }: SelectionLayerProps) =>
       .filter((node): node is Konva.Node => node !== null && node !== undefined);
 
     transformer.nodes(selectedNodes);
+
+    // Hide mid-edge anchors visually (keep them functional for resize)
+    const midAnchors = ['top-center', 'middle-left', 'middle-right', 'bottom-center'];
+    midAnchors.forEach((name) => {
+      const anchor = transformer.findOne(`.${name}`);
+      if (anchor) {
+        anchor.opacity(0);
+      }
+    });
+
     layer.batchDraw();
   }, [selectedIds, lineArrowIds, stageRef]);
-
-  const handleTransformStart = useCallback(() => {
-    onTransformChange?.(true);
-  }, [onTransformChange]);
 
   const handleTransformEnd = useCallback(() => {
     const transformer = transformerRef.current;
@@ -61,9 +66,7 @@ const SelectionLayer = ({ stageRef, onTransformChange }: SelectionLayerProps) =>
       node.scaleX(1);
       node.scaleY(1);
     });
-
-    onTransformChange?.(false);
-  }, [updateElement, onTransformChange]);
+  }, [updateElement]);
 
   return (
     <Transformer
@@ -74,7 +77,6 @@ const SelectionLayer = ({ stageRef, onTransformChange }: SelectionLayerProps) =>
         }
         return newBox;
       }}
-      onTransformStart={handleTransformStart}
       onTransformEnd={handleTransformEnd}
       anchorSize={8}
       anchorCornerRadius={2}
@@ -93,16 +95,6 @@ const SelectionLayer = ({ stageRef, onTransformChange }: SelectionLayerProps) =>
         'bottom-left',
         'middle-left',
       ]}
-      anchorStyleFunc={(anchor) => {
-        const isCorner = anchor.hasName('top-left') || anchor.hasName('top-right')
-          || anchor.hasName('bottom-left') || anchor.hasName('bottom-right');
-        if (!isCorner) {
-          anchor.fill('transparent');
-          anchor.stroke('transparent');
-          anchor.width(12);
-          anchor.height(12);
-        }
-      }}
     />
   );
 };
