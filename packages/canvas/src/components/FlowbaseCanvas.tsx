@@ -14,6 +14,7 @@ import SelectionBox from './SelectionBox';
 import SnapGuides from './SnapGuides';
 import ConnectionPoints from './ConnectionPoints';
 import ArrowControls from './ArrowControls';
+import ConnectionHandles from './ConnectionHandles';
 import LaserLayer from './LaserLayer';
 import type { LaserTrail } from './LaserLayer';
 import { recalcBoundArrow, findNearestAnchor } from '../utils/connectors';
@@ -776,6 +777,12 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
                 onSegmentDblClick={handleSegmentDblClick}
               />
             ))}
+          {activeTool === 'select' && selectedIds.size > 0 && (
+            <ConnectionHandles
+              elements={elements}
+              selectedIds={selectedIds}
+            />
+          )}
           {draggingEndpoint && (
             <ConnectionPoints
               elements={elements}
