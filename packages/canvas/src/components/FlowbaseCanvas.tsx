@@ -777,12 +777,6 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
                 onSegmentDblClick={handleSegmentDblClick}
               />
             ))}
-          {activeTool === 'select' && selectedIds.size > 0 && (
-            <ConnectionHandles
-              elements={elements}
-              selectedIds={selectedIds}
-            />
-          )}
           {draggingEndpoint && (
             <ConnectionPoints
               elements={elements}
@@ -812,6 +806,12 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
             <LaserLayer trails={laserTrails} onCleanup={handleLaserCleanup} />
           )}
           <SelectionLayer stageRef={stageRef} />
+          {activeTool === 'select' && selectedIds.size > 0 && (
+            <ConnectionHandles
+              elements={elements}
+              selectedIds={selectedIds}
+            />
+          )}
         </Layer>
         {/* Remote presence layer */}
         {awareness && (

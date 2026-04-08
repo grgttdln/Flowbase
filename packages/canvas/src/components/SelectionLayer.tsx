@@ -42,7 +42,6 @@ const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
       if (anchor) {
         anchor.fill('transparent');
         anchor.stroke('transparent');
-        anchor.strokeWidth(0);
       }
     });
 
