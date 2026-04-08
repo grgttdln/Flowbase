@@ -814,7 +814,7 @@ const FlowbaseCanvas = ({ width, height, stageRef: externalStageRef, onContextMe
           {laserTrails.length > 0 && (
             <LaserLayer trails={laserTrails} onCleanup={handleLaserCleanup} />
           )}
-          <SelectionLayer stageRef={stageRef} onTransformChange={setIsTransforming} />
+          <SelectionLayer stageRef={stageRef} onTransformingChange={setIsTransforming} />
         </Layer>
         {/* Remote presence layer */}
         {awareness && (
