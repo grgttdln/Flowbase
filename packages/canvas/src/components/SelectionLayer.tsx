@@ -77,13 +77,9 @@ const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
       rotateAnchorOffset={20}
       enabledAnchors={[
         'top-left',
-        'top-center',
         'top-right',
-        'middle-right',
         'bottom-right',
-        'bottom-center',
         'bottom-left',
-        'middle-left',
       ]}
     />
   );
