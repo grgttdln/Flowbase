@@ -35,13 +35,13 @@ const IconButton = ({
         aria-pressed={isActive}
         className={`flex items-center justify-center transition-all duration-150 ${sizeClasses} ${radiusClass} ${
           disabled
-            ? 'cursor-default text-black/20'
+            ? 'cursor-default text-[#6d28d9]/20'
             : isActive
               ? 'bg-[#7c3aed]/[0.12] text-[#7c3aed]'
-              : 'text-[#555] hover:bg-black/[0.06] hover:text-[#222] active:scale-[0.92] active:bg-black/[0.08]'
+              : 'text-[#a78bfa] hover:bg-[#7c3aed]/[0.06] hover:text-[#8b5cf6] active:scale-[0.92] active:bg-[#7c3aed]/[0.08]'
         }`}
       >
-        <Icon size={iconSize} strokeWidth={isActive ? 2.2 : 1.8} />
+        <Icon size={iconSize} strokeWidth={isActive ? 2.4 : 2} />
       </button>
     </Tooltip>
   );

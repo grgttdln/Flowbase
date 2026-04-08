@@ -207,6 +207,23 @@ export const useToolHandlers = () => {
         }
       }
       addElement(rest);
+    } else if (activeTool === 'rectangle' || activeTool === 'ellipse' || activeTool === 'diamond') {
+      // Click without drag: create shape with predefined size, centered on click
+      const defaultSize = 100;
+      const { id, zIndex, ...rest } = drawingElement;
+      rest.x = rest.x - defaultSize / 2;
+      rest.y = rest.y - defaultSize / 2;
+      rest.width = defaultSize;
+      rest.height = defaultSize;
+      addElement(rest);
+    } else if (activeTool === 'line' || activeTool === 'arrow') {
+      // Click without drag: create line/arrow with predefined length
+      const defaultLength = 150;
+      const { id, zIndex, ...rest } = drawingElement;
+      rest.points = [0, 0, defaultLength, 0];
+      rest.width = defaultLength;
+      rest.height = 0;
+      addElement(rest);
     }
 
     setDrawingElement(null);
