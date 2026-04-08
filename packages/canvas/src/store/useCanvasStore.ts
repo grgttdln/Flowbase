@@ -75,6 +75,10 @@ export interface CanvasState {
   setIsDrawing: (drawing: boolean) => void;
   drawingElement: Element | null;
   setDrawingElement: (element: Element | null) => void;
+
+  // Stamp
+  selectedStamp: string;
+  setSelectedStamp: (stamp: string) => void;
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -501,4 +505,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   setIsDrawing: (drawing) => set({ isDrawing: drawing }),
   drawingElement: null,
   setDrawingElement: (element) => set({ drawingElement: element }),
+
+  // Stamp
+  selectedStamp: '👍',
+  setSelectedStamp: (stamp) => set({ selectedStamp: stamp }),
 }));

@@ -16,8 +16,8 @@ const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
   const updateElement = useCanvasStore((s) => s.updateElement);
   const pushHistory = useCanvasStore((s) => s.pushHistory);
 
-  const lineArrowIds = useMemo(
-    () => new Set(elements.filter((el) => el.type === 'line' || el.type === 'arrow').map((el) => el.id)),
+  const excludedIds = useMemo(
+    () => new Set(elements.filter((el) => el.type === 'line' || el.type === 'arrow' || el.type === 'stamp').map((el) => el.id)),
     [elements]
   );
 
@@ -30,7 +30,7 @@ const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
     if (!layer) return;
 
     const selectedNodes = Array.from(selectedIds)
-      .filter((id) => !lineArrowIds.has(id))
+      .filter((id) => !excludedIds.has(id))
       .map((id) => stage.findOne(`#${id}`))
       .filter((node): node is Konva.Node => node !== null && node !== undefined);
 
@@ -46,7 +46,7 @@ const SelectionLayer = ({ stageRef }: SelectionLayerProps) => {
     });
 
     layer.batchDraw();
-  }, [selectedIds, lineArrowIds, stageRef]);
+  }, [selectedIds, excludedIds, stageRef]);
 
   const handleTransformEnd = useCallback(() => {
     const transformer = transformerRef.current;

@@ -14,6 +14,7 @@ import {
   Redo2,
   Pointer,
   Eraser,
+  Stamp,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ToolType } from '@flowbase/shared';
@@ -30,12 +31,13 @@ const TOOLS: { key: ToolType; icon: LucideIcon; label: string; shortcut: string 
   { key: 'freehand', icon: Pencil, label: 'Draw', shortcut: 'P' },
   { key: 'text', icon: Type, label: 'Text', shortcut: 'T' },
   { key: 'stickynote', icon: StickyNote, label: 'Sticky note', shortcut: 'S' },
+  { key: 'stamp', icon: Stamp, label: 'Stamp', shortcut: 'M' },
   { key: 'laser', icon: Pointer, label: 'Laser pointer', shortcut: 'K' },
   { key: 'eraser', icon: Eraser, label: 'Eraser', shortcut: 'E' },
 ];
 
 // Divider positions: after Select (index 0), after Diamond (index 3), after Arrow (index 5), after Eraser (index 10)
-const DIVIDER_AFTER = new Set([0, 3, 5, 10]);
+const DIVIDER_AFTER = new Set([0, 3, 5, 11]);
 
 interface ToolPickerProps {
   activeTool: ToolType;

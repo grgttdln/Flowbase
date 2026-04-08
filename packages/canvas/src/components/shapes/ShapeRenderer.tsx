@@ -7,6 +7,7 @@ import ArrowShape from './ArrowShape';
 import FreehandShape from './FreehandShape';
 import TextShape from './TextShape';
 import StickyNoteShape from './StickyNoteShape';
+import StampShape from './StampShape';
 import React from 'react';
 
 interface ShapeRendererProps {
@@ -39,6 +40,8 @@ const ShapeRenderer = React.memo(({ element, isSelected, onSelect, onDragStart, 
       return <TextShape {...commonProps} onDblClick={onTextDblClick} />;
     case 'stickynote':
       return <StickyNoteShape {...commonProps} onDblClick={onTextDblClick} />;
+    case 'stamp':
+      return <StampShape {...commonProps} />;
     default:
       return null;
   }

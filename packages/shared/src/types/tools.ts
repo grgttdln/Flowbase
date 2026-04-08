@@ -8,5 +8,6 @@ export type ToolType =
   | 'freehand'
   | 'text'
   | 'stickynote'
+  | 'stamp'
   | 'laser'
   | 'eraser';

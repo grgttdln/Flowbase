@@ -21,6 +21,7 @@ export const useToolHandlers = () => {
     setDrawingElement,
     updateElement,
     elements,
+    selectedStamp,
   } = useCanvasStore();
 
   const styleDefaults = useStyleDefaults();
@@ -46,6 +47,25 @@ export const useToolHandlers = () => {
 
   const onMouseDown = useCallback((x: number, y: number) => {
     if (activeTool === 'select' || activeTool === 'laser' || activeTool === 'eraser') return;
+
+    if (activeTool === 'stamp') {
+      const stampSize = 80;
+      addElement({
+        type: 'stamp',
+        x: x - stampSize / 2,
+        y: y - stampSize / 2,
+        width: stampSize,
+        height: stampSize,
+        text: selectedStamp,
+        fontSize: 64,
+        ...getShapeDefaults(),
+        stroke: 'transparent',
+        fill: 'transparent',
+        strokeWidth: 0,
+      });
+      setIsDrawing(false);
+      return;
+    }
 
     startAnchor.current = null;
     endAnchor.current = null;
@@ -122,7 +142,7 @@ export const useToolHandlers = () => {
       };
       setDrawingElement(tempElement);
     }
-  }, [activeTool, addElement, setIsDrawing, setDrawingElement, getShapeDefaults, elements]);
+  }, [activeTool, addElement, setIsDrawing, setDrawingElement, getShapeDefaults, elements, selectedStamp]);
 
   const onMouseMove = useCallback((x: number, y: number) => {
     if (!isDrawing || !startPos.current || !drawingElement) return;
@@ -244,6 +264,8 @@ export const useToolHandlers = () => {
         return CURSOR_PLUS;
       case 'stickynote':
         return CURSOR_STICKYNOTE;
+      case 'stamp':
+        return CURSOR_PLUS;
       case 'line':
       case 'arrow':
         return CURSOR_CROSSHAIR;

@@ -18,6 +18,7 @@ import AIResponsePopover from '../ai/AIResponsePopover';
 import SettingsPanel from '../dialogs/SettingsPanel';
 import ShortcutsPanel from '../dialogs/ShortcutsPanel';
 import PropertiesSidebar from '../properties/PropertiesSidebar';
+import StampPanel from '../toolbar/StampPanel';
 import GenerateDialog from '../ai/GenerateDialog';
 import SharePopover from '../dialogs/SharePopover';
 
@@ -80,6 +81,8 @@ const CanvasEditor = ({ projectId, projectName, savedAIPopovers }: CanvasEditorP
   const alignBottom = useCanvasStore((s) => s.alignBottom);
   const distributeH = useCanvasStore((s) => s.distributeH);
   const distributeV = useCanvasStore((s) => s.distributeV);
+  const selectedStamp = useCanvasStore((s) => s.selectedStamp);
+  const setSelectedStamp = useCanvasStore((s) => s.setSelectedStamp);
   const { isCollaborating, status: collabStatus, roomId: collabRoomId } = useCollaboration();
 
   // Keep ref in sync for auto-save (avoids re-creating the save callback on every popover change)
@@ -127,6 +130,7 @@ const CanvasEditor = ({ projectId, projectName, savedAIPopovers }: CanvasEditorP
       p: 'freehand',
       t: 'text',
       s: 'stickynote',
+      m: 'stamp',
       k: 'laser',
       e: 'eraser',
     };
@@ -412,6 +416,14 @@ const CanvasEditor = ({ projectId, projectName, savedAIPopovers }: CanvasEditorP
           onUndo={undo}
           onRedo={redo}
         />
+        {activeTool === 'stamp' && (
+          <div className="mt-2">
+            <StampPanel
+              selectedStamp={selectedStamp}
+              onStampSelect={setSelectedStamp}
+            />
+          </div>
+        )}
       </div>
 
       {/* Secondary actions — top right */}
