@@ -19,22 +19,27 @@ const EditorLoader = ({ projectId }: EditorLoaderProps) => {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const p = await getProject(projectId);
-      if (cancelled) return;
-      if (!p || p.deletedAt !== null) {
-        router.replace('/');
-        return;
+      try {
+        const p = await getProject(projectId);
+        if (cancelled) return;
+        if (!p || p.deletedAt !== null) {
+          router.replace('/projects');
+          return;
+        }
+        // Recalculate bound arrows so connections snap to actual anchor positions
+        let elements = p.scene.elements;
+        elements = elements.map((el) => {
+          if ((el.type !== 'arrow' && el.type !== 'line') || (!el.startBinding && !el.endBinding)) return el;
+          const updates = recalcBoundArrow(el, elements);
+          return updates ? { ...el, ...updates } : el;
+        });
+        useCanvasStore.getState().setElements(elements);
+        setProject(p);
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to load project:', err);
+        if (!cancelled) router.replace('/projects');
       }
-      // Recalculate bound arrows so connections snap to actual anchor positions
-      let elements = p.scene.elements;
-      elements = elements.map((el) => {
-        if ((el.type !== 'arrow' && el.type !== 'line') || (!el.startBinding && !el.endBinding)) return el;
-        const updates = recalcBoundArrow(el, elements);
-        return updates ? { ...el, ...updates } : el;
-      });
-      useCanvasStore.getState().setElements(elements);
-      setProject(p);
-      setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [projectId, router]);

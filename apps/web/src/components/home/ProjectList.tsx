@@ -68,9 +68,15 @@ const ProjectList = () => {
   };
 
   const handleTemplateSelect = async (name: string, elements: import('@flowbase/shared').Element[]) => {
-    setTemplateOpen(false);
-    const id = await createProject(name, elements);
-    router.push(`/editor/${id}`);
+    try {
+      const id = await createProject(name, elements);
+      setTemplateOpen(false);
+      router.push(`/editor/${id}`);
+    } catch (err) {
+      console.error('Failed to create project:', err);
+      setImportError(err instanceof Error ? err.message : 'Failed to create project');
+      setTemplateOpen(false);
+    }
   };
 
   const handleOpen = (id: string) => {
