@@ -103,12 +103,18 @@ const GenerateDialog = ({ open, onClose, onNeedsApiKey }: GenerateDialogProps) =
               throw new Error(parsed.error);
             }
           } catch (e) {
-            if (e instanceof Error && e.message !== 'Unexpected') throw e;
+            // Re-throw AI service errors, skip malformed SSE chunks
+            if (e instanceof SyntaxError) continue;
+            throw e;
           }
         }
       }
 
       // Parse the accumulated response into elements
+      if (!fullText.trim()) {
+        throw new Error('AI returned an empty response. Try again.');
+      }
+      console.error('[Flowbase] Raw AI response for generate:', fullText);
       const result = parseGeneratedElements(fullText);
 
       // Calculate viewport center in canvas coords

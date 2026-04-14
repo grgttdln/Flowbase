@@ -66,11 +66,10 @@ export async function POST(req: NextRequest) {
           controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
           controller.close();
         } catch (err) {
-          if (err instanceof AIError) {
-            controller.enqueue(
-              new TextEncoder().encode(`data: ${JSON.stringify({ error: err.message })}\n\n`),
-            );
-          }
+          const message = err instanceof Error ? err.message : 'AI service unavailable. Try again later.';
+          controller.enqueue(
+            new TextEncoder().encode(`data: ${JSON.stringify({ error: message })}\n\n`),
+          );
           controller.close();
         }
       },

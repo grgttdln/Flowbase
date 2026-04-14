@@ -16,20 +16,46 @@ interface RawElement {
   points?: number[];
 }
 
+function findMatchingBrace(text: string): string | null {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') { depth--; if (depth === 0) return text.slice(start, i + 1); }
+  }
+  return null;
+}
+
+function sanitizeJSON(text: string): string {
+  // Remove trailing commas before } or ]
+  return text.replace(/,\s*([}\]])/g, '$1');
+}
+
 function extractJSON(text: string): string {
-  // Try the raw text first
   const trimmed = text.trim();
-  if (trimmed.startsWith('{')) return trimmed;
 
-  // Try to extract from markdown code blocks
+  // Try to extract from markdown code blocks first (most structured)
   const codeBlockMatch = trimmed.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-  if (codeBlockMatch) return codeBlockMatch[1].trim();
+  if (codeBlockMatch) return sanitizeJSON(codeBlockMatch[1].trim());
 
-  // Try to find a JSON object in the text
-  const jsonMatch = trimmed.match(/\{[\s\S]*"elements"[\s\S]*\}/);
-  if (jsonMatch) return jsonMatch[0];
+  // Find the first balanced { ... } block in the text
+  const braceMatch = findMatchingBrace(trimmed);
+  if (braceMatch) return sanitizeJSON(braceMatch);
 
-  return trimmed;
+  // Last resort: if text looks like a bare array, wrap it
+  if (trimmed.startsWith('[')) {
+    return sanitizeJSON(`{"elements":${trimmed}}`);
+  }
+
+  return sanitizeJSON(trimmed);
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -125,5 +151,26 @@ export function parseGeneratedElements(text: string): ParseResult {
     elements.push(element);
   }
 
-  return { elements, warnings };
+  // Remove overlapping shapes (keep the first one at each position)
+  const deduped: typeof elements = [];
+  for (const el of elements) {
+    if (el.type === 'arrow' || el.type === 'text') {
+      deduped.push(el);
+      continue;
+    }
+    const overlaps = deduped.some(
+      (existing) =>
+        existing.type !== 'arrow' &&
+        existing.type !== 'text' &&
+        Math.abs(existing.x - el.x) < 40 &&
+        Math.abs(existing.y - el.y) < 40,
+    );
+    if (overlaps) {
+      warnings.push(`Removed overlapping ${el.type} "${el.text ?? ''}" at (${el.x},${el.y})`);
+    } else {
+      deduped.push(el);
+    }
+  }
+
+  return { elements: deduped, warnings };
 }
